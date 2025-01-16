@@ -1,0 +1,109 @@
+import pytest
+import asyncio
+import grpc
+from google.protobuf import empty_pb2
+
+from model_runner.protos.model_runner_pb2_grpc import ModelRunnerStub
+from model_runner.protos.model_runner_pb2 import InferRequest, DataType
+from model_runner.datatype_transformer import encode_data, decode_data
+
+SERVER_ADDRESS = "localhost:50051"
+
+
+#@pytest.mark.asyncio
+# async def test_grpc_streaming_from_user_input():
+#     async with grpc.aio.insecure_channel(SERVER_ADDRESS) as channel:
+#         stub = ModelRunnerStub(channel)
+#
+#         async def generate_requests():
+#             while True:
+#                 user_input = await asyncio.to_thread(input, "Enter a double value: ")
+#                 if user_input.lower() == "stop":
+#                     break
+#                 try:
+#                     double_value = float(user_input)
+#                     yield InferRequest(
+#                         arguments=[
+#                             Argument(type=DataType.DOUBLE, name="x", value=encode_data(DataType.DOUBLE, double_value)),
+#                             Argument(type=DataType.STRING, name="stream", value=encode_data(DataType.STRING, "streamA")),
+#                         ]
+#                     )
+#                 except ValueError:
+#                     print("Invalid input. Please enter a valid double value.")
+#
+#         async for response in stub.Infer(generate_requests()):
+#             print(f'prediction : {decode_data(response.prediction, response.type)}\n')
+#
+#
+# # Todo fix
+# def test_grpc_streaming():
+#     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+#         stub = ModelRunnerStub(channel)
+#
+#         def generate_requests():
+#             for i in range(5):  # Example : 5 messages
+#                 yield InferRequest(
+#                     arguments=[
+#                         Argument(type=DataType.DOUBLE, name="x", value=encode_data(DataType.DOUBLE, 0.20 * i)),
+#                         Argument(type=DataType.STRING, name="stream", value=encode_data(DataType.STRING, "streamA")),
+#                     ]
+#                 )
+#
+#         for response in stub.InferStream(generate_requests()):
+#             print(decode_data(response.prediction, response.type))
+
+
+def test_grpc_infer():
+    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+        stub = ModelRunnerStub(channel)
+        stub.Setup(empty_pb2.Empty())
+        print("Stepup complete.")
+
+        for i in range(5):  # Example : 5 messages
+            value = {"x": 0.20 * i, "stream": "streamA"}
+            request = InferRequest(type=DataType.JSON,
+                                   argument=encode_data(DataType.JSON, value))
+            print(f"request x:{value}")
+            response = stub.Infer(request)
+            print(f"result {decode_data(response.prediction, response.type)}")
+
+
+def test_grpc_infer_bird():
+    with grpc.insecure_channel("localhost:50051") as channel:
+
+        # ModelRunnerStub is class generate and abstract remote call
+        stub = ModelRunnerStub(channel)
+        stub.Setup(empty_pb2.Empty())
+        print("Stepup complete.")
+
+        value = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
+        #here the call happen and call function
+        request = InferRequest(type=DataType.JSON, argument=encode_data(DataType.JSON, value))
+
+        print(f"request x:{value}")
+        response = stub.Infer(request)
+        print(f"result {decode_data(response.prediction, response.type)}")
+
+def test_grpc_infer_bird_reinit():
+    with grpc.insecure_channel("localhost:50051") as channel:
+
+        # ModelRunnerStub is class generate and abstract remote call
+        stub = ModelRunnerStub(channel)
+        stub.Setup(empty_pb2.Empty())
+
+        print("Stepup complete.")
+        stub.Reinitialize(empty_pb2.Empty())
+
+
+        value = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
+        #here the call happen and call function
+        request = InferRequest(type=DataType.JSON, argument=encode_data(DataType.JSON, value))
+
+        print(f"request x:{value}")
+        response = stub.Infer(request)
+        print(f"result {decode_data(response.prediction, response.type)}")
+
+
+if __name__ == "__main__":
+    # asyncio.run(test_grpc_streaming_from_user_input())
+    test_grpc_infer()

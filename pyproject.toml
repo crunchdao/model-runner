@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "model-runner"
+version = "0.1.0"
+description = ""
+authors = ["boutrig abdennour <abdennour.boutrig@crunchdao.com>"]
+readme = "README.md"
+exclude = ["scripts/*"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+grpcio = { version = "^1.0.0"}
+joblib = "1.3.2"
+pytest = "^8.3.4"
+pyarrow = "^18.1.0"
+importlib = "^1.0.4"
+click = "^8.1.8"
+protobuf = "^5.29.2"
+pandas = "^2.2.3"
+
+[tool.poetry.group.dev.dependencies]
+grpcio-tools = "^1.68.1"
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.1"
+boto3 = "^1.35.91"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+model-runner = "model_runner.server:serve"
+_generate-proto = "scripts.generate_proto:run"
+_build-publish = "scripts.build_package:run"
