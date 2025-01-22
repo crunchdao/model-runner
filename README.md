@@ -1,7 +1,75 @@
-### GRPC
+## Model Runner
  
-Generate gRPC code : 
+### Getting Started
 
+To get started with this project, follow the steps below:
+
+#### Prerequisites
+
+Make sure you have the following installed:
+
+- **Python 3.11.10** or later
+- **Poetry** package manager
+
+#### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository_url>
+   cd <project_folder>
+   ```
+
+2. Use Poetry to install the dependencies:
+   ```bash
+   poetry install
+   ```
+
+3. Activate the Poetry virtual environment:
+   ```bash
+   poetry shell
+   ```
+
+#### Generating Protocol Buffers
+
+This project uses [gRPC](https://grpc.io/) for communication. You can generate the necessary gRPC code if you change the `[model_runner.proto](model_runner/protos/model_runner.proto)` file by using the following command:
+
+```bash
+poetry run _generate-proto
 ```
-poetry run generate-proto
+
+Ensure all `.proto` files are present in the appropriate directory before running the above command.
+
+#### Running the Project
+
+Once dependencies are installed, you can run the main application using:
+
+```bash
+poetry run python __main__.py --code-directory tests/models_examples/bill
 ```
+
+Replace `--code-directory` with the path to the directory containing the code that should be made available remotely.
+
+#### Running Tests
+
+To run the tests for this project, execute:
+Make sure the gRPC server is correctly set up and running before running the tests. (Next version of tests will introduce this automatically)
+
+```bash
+poetry run pytest
+```
+
+### Publishing 
+
+Currently, code delivery is done through a build and push to S3, where the orchestrator retrieves it to build a Docker image  (to improve in the futur)
+```bash
+poetry run _build-publish
+```
+
+#### Additional Notes
+
+- If you need to add new dependencies, use:
+  ```bash
+  poetry add <package_name>
+  ```
+
+

@@ -7,6 +7,7 @@ from model_runner.protos.model_runner_pb2_grpc import ModelRunnerStub
 from model_runner.protos.model_runner_pb2 import InferRequest, DataType
 from model_runner.datatype_transformer import encode_data, decode_data
 
+
 SERVER_ADDRESS = "localhost:50051"
 
 
@@ -53,23 +54,26 @@ SERVER_ADDRESS = "localhost:50051"
 #             print(decode_data(response.prediction, response.type))
 
 
-def test_grpc_infer():
-    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
-        stub = ModelRunnerStub(channel)
-        stub.Setup(empty_pb2.Empty())
-        print("Stepup complete.")
+# def test_grpc_infer():
+#     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+#         stub = ModelRunnerStub(channel)
+#         stub.Setup(empty_pb2.Empty())
+#         print("Stepup complete.")
+#
+#         for i in range(5):  # Example : 5 messages
+#             value = {"x": 0.20 * i, "stream": "streamA"}
+#             request = InferRequest(type=DataType.JSON,
+#                                    argument=encode_data(DataType.JSON, value))
+#             print(f"request x:{value}")
+#             response = stub.Infer(request)
+#             print(f"result {decode_data(response.prediction, response.type)}")
 
-        for i in range(5):  # Example : 5 messages
-            value = {"x": 0.20 * i, "stream": "streamA"}
-            request = InferRequest(type=DataType.JSON,
-                                   argument=encode_data(DataType.JSON, value))
-            print(f"request x:{value}")
-            response = stub.Infer(request)
-            print(f"result {decode_data(response.prediction, response.type)}")
 
 
+# please launch the server before : poetry run python __main__.py --code-directory tests/models_examples/bill
 def test_grpc_infer_bird():
-    with grpc.insecure_channel("localhost:50051") as channel:
+
+    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
 
         # ModelRunnerStub is class generate and abstract remote call
         stub = ModelRunnerStub(channel)
@@ -84,8 +88,9 @@ def test_grpc_infer_bird():
         response = stub.Infer(request)
         print(f"result {decode_data(response.prediction, response.type)}")
 
+# please launch the server before : poetry run python __main__.py --code-directory tests/models_examples/bill
 def test_grpc_infer_bird_reinit():
-    with grpc.insecure_channel("localhost:50051") as channel:
+    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
 
         # ModelRunnerStub is class generate and abstract remote call
         stub = ModelRunnerStub(channel)
@@ -102,8 +107,3 @@ def test_grpc_infer_bird_reinit():
         print(f"request x:{value}")
         response = stub.Infer(request)
         print(f"result {decode_data(response.prediction, response.type)}")
-
-
-if __name__ == "__main__":
-    # asyncio.run(test_grpc_streaming_from_user_input())
-    test_grpc_infer()

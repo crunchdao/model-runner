@@ -10,7 +10,7 @@ import click
 @click.option("--code-directory", envvar="CODE_DIRECTORY", default="app/code")
 @click.option("--model-directory", envvar="MODEL_DIRECTORY", default="model", help='Relative path from model-directory')
 @click.option("--has-gpu", envvar="HAS_GPU", type=bool, default=False, help='Information if GPU is available')
-@click.option("--main-file", envvar="MAIN_FILE", default="main.py")
+@click.option("--main-file", envvar="MAIN_FILE", default="main.py", help="main file's name of model")
 def serve(address, code_directory, model_directory, has_gpu, main_file):
     """Program giving access remotely to model via RPC"""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
