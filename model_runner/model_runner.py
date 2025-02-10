@@ -30,14 +30,14 @@ class InferStream:
 class ModelRunner(model_runner_pb2_grpc.ModelRunnerServicer):
     def __init__(self,
                  code_directory: str,
-                 model_directory: str,
+                 resouce_directory: str,
                  has_gpu: bool = False,
                  main_file="main.py",
                  ):
 
         self.main_file = main_file
         self.code_directory = code_directory
-        self.model_directory = model_directory
+        self.resouce_directory = resouce_directory
         self.has_gpu = has_gpu
         self.module = self.import_code()
 

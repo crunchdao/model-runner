@@ -48,7 +48,7 @@ COPY submission/code/ ./
 FROM base AS final
 
 # Copy model
-COPY submission/code/resource /workspace/submission/code/resource
+COPY resources /workspace/resources
 
 # Set working directory
 WORKDIR /app
@@ -61,7 +61,7 @@ RUN pip install --no-cache-dir *.whl
 
 # Set the entry point and default arguments
 ENTRYPOINT ["model-runner"]
-CMD ["--code-directory", "/workspace/submission/code/", "--model-directory", "/workspace/submission/model/"]
+CMD ["--code-directory", "/workspace/submission/code/", "--resource-directory", "/workspace/resources"]
 
 ARG HAS_GPU=False
 ENV HAS_GPU=$HAS_GPU
