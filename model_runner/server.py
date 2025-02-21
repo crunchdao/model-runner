@@ -1,7 +1,8 @@
 from concurrent import futures
 import grpc
-from .protos import model_runner_pb2_grpc
-from .model_runner import ModelRunner
+from model_runner.grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
+from model_runner.servicers.train_infer_servicer import TrainInferStreamServicer
+from model_runner.servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 import click
 
 
@@ -14,11 +15,20 @@ import click
 def serve(address, code_directory, resource_directory, has_gpu, main_file):
     """Program giving access remotely to model via RPC"""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
-    model_runner_pb2_grpc.add_ModelRunnerServicer_to_server(ModelRunner(code_directory=code_directory,
-                                                                        resouce_directory=resource_directory,
-                                                                        has_gpu=has_gpu,
-                                                                        main_file=main_file),
-                                                            server)
+    train_infer_pb2_grpc.add_TrainInferStreamServiceServicer_to_server(
+        TrainInferStreamServicer(
+            code_directory=code_directory,
+            resouce_directory=resource_directory,
+            has_gpu=has_gpu,
+            main_file=main_file),
+        server)
+    dynamic_subclass_pb2_grpc.add_DynamicSubclassServiceServicer_to_server(
+        DynamicSubclassServicer(
+            code_directory=code_directory
+        ),
+        server
+    )
+
     server.add_insecure_port(address)
     print(f"Server started on port {address}...")
     server.start()

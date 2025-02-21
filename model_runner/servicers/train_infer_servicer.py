@@ -1,15 +1,15 @@
 import os
 import sys
-from typing import Iterator
 
 import importlib
 
 import grpc
 
-from .protos.model_runner_pb2 import InferRequest, InferResponse, DataType
-from .protos import model_runner_pb2_grpc
-from .datatype_transformer import decode_data, encode_data, detect_data_type
-from .utils import ensure_function
+from model_runner.grpc.generated import train_infer_pb2_grpc
+from model_runner.grpc.generated.train_infer_pb2 import InferRequest, InferResponse
+from model_runner.grpc.generated.commons_pb2 import Argument, Variant
+from model_runner.utils.checkers import ensure_function
+from model_runner.utils.datatype_transformer import decode_data, encode_data, detect_data_type
 from google.protobuf import empty_pb2
 
 
@@ -27,7 +27,7 @@ class InferStream:
         return self.value
 
 
-class ModelRunner(model_runner_pb2_grpc.ModelRunnerServicer):
+class TrainInferStreamServicer(train_infer_pb2_grpc.TrainInferStreamServiceServicer):
     def __init__(self,
                  code_directory: str,
                  resouce_directory: str,
@@ -63,7 +63,7 @@ class ModelRunner(model_runner_pb2_grpc.ModelRunnerServicer):
     def Infer(self, infer_request: InferRequest, context):
         try:
 
-            self.infer_stream.value = decode_data(infer_request.argument, infer_request.type)
+            self.infer_stream.value = decode_data(infer_request.argument.value, infer_request.argument.type)
 
             print(f"InferRequest : {self.infer_stream.value}")
 
@@ -73,12 +73,12 @@ class ModelRunner(model_runner_pb2_grpc.ModelRunnerServicer):
 
             # Require prediction type in Setup ??
             type_of_prediction = detect_data_type(prediction)
-            infer_response = InferResponse(type=type_of_prediction, prediction=encode_data(type_of_prediction, prediction))
+            infer_response = InferResponse(prediction=Variant(type=type_of_prediction, value=encode_data(type_of_prediction, prediction)))
 
             return infer_response
 
         except Exception as e:
-            print(e)
+            print(str(e))
             self._setup_infer_generator()
             context.abort(code=grpc.StatusCode.INTERNAL, details=e)
 

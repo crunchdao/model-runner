@@ -1,11 +1,11 @@
-import pytest
-import asyncio
 import grpc
 from google.protobuf import empty_pb2
 
-from model_runner.protos.model_runner_pb2_grpc import ModelRunnerStub
-from model_runner.protos.model_runner_pb2 import InferRequest, DataType
-from model_runner.datatype_transformer import encode_data, decode_data
+from model_runner.grpc.generated.train_infer_pb2_grpc import TrainInferStreamServiceStub
+from model_runner.grpc.generated.train_infer_pb2 import InferRequest, InferResponse
+from model_runner.grpc.generated.commons_pb2 import Variant, VariantType
+
+from model_runner.utils.datatype_transformer import encode_data, decode_data
 
 
 SERVER_ADDRESS = "localhost:50051"
@@ -76,34 +76,35 @@ def test_grpc_infer_bird():
     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
 
         # ModelRunnerStub is class generate and abstract remote call
-        stub = ModelRunnerStub(channel)
+        stub = TrainInferStreamServiceStub(channel)
         stub.Setup(empty_pb2.Empty())
         print("Stepup complete.")
 
-        value = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
+        payload = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
         #here the call happen and call function
-        request = InferRequest(type=DataType.JSON, argument=encode_data(DataType.JSON, value))
+        request = InferRequest(argument=Variant(type=VariantType.JSON, value=encode_data(VariantType.JSON, payload)))
 
-        print(f"request x:{value}")
+        infer_response: InferResponse = stub.Infer(request)
+        print(f"request x:{payload}")
         response = stub.Infer(request)
-        print(f"result {decode_data(response.prediction, response.type)}")
+        print(f"result {decode_data(response.prediction.value, response.prediction.type)}")
 
 # please launch the server before : poetry run python __main__.py --code-directory tests/models_examples/bill
 def test_grpc_infer_bird_reinit():
     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
 
         # ModelRunnerStub is class generate and abstract remote call
-        stub = ModelRunnerStub(channel)
+        stub = TrainInferStreamServiceStub(channel)
         stub.Setup(empty_pb2.Empty())
 
         print("Stepup complete.")
         stub.Reinitialize(empty_pb2.Empty())
 
 
-        value = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
+        payload = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
         #here the call happen and call function
-        request = InferRequest(type=DataType.JSON, argument=encode_data(DataType.JSON, value))
+        request = InferRequest(argument=Variant(type=VariantType.JSON, value=encode_data(VariantType.JSON, payload)))
 
-        print(f"request x:{value}")
+        print(f"request x:{payload}")
         response = stub.Infer(request)
-        print(f"result {decode_data(response.prediction, response.type)}")
+        print(f"result {decode_data(response.prediction.value, response.prediction.type)}")
