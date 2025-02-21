@@ -18,7 +18,7 @@ def serve(address, code_directory, resource_directory, has_gpu, main_file):
     train_infer_pb2_grpc.add_TrainInferStreamServiceServicer_to_server(
         TrainInferStreamServicer(
             code_directory=code_directory,
-            resouce_directory=resource_directory,
+            resource_directory=resource_directory,
             has_gpu=has_gpu,
             main_file=main_file),
         server)

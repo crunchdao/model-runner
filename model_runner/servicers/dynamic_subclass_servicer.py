@@ -15,6 +15,10 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
         super().__init__()
 
     def Setup(self, request: SetupRequest, context):
+        if self.instance is not None:
+            print('Setup has already been called and an instance exists, setup is ignored', file=sys.stdout)
+            return SetupResponse()
+
         try:
             class_name = request.className
             if class_name == '':

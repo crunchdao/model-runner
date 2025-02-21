@@ -36,7 +36,7 @@ def example_code_path():
 def test_setup_and_predict_success(grpc_context, example_code_path):
     print(f"model_directory: {example_code_path}")
 
-    servicer = TrainInferStreamServicer(code_directory=example_code_path, resouce_directory="", has_gpu=False)
+    servicer = TrainInferStreamServicer(code_directory=example_code_path, resource_directory="", has_gpu=False)
     response = servicer.Setup(empty_pb2.Empty(), grpc_context)
     assert response is not None, print(grpc_context.abort.call_args)
 

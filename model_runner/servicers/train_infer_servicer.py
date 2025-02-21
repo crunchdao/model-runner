@@ -30,27 +30,32 @@ class InferStream:
 class TrainInferStreamServicer(train_infer_pb2_grpc.TrainInferStreamServiceServicer):
     def __init__(self,
                  code_directory: str,
-                 resouce_directory: str,
+                 resource_directory: str,
                  has_gpu: bool = False,
                  main_file="main.py",
                  ):
 
         self.main_file = main_file
         self.code_directory = code_directory
-        self.resouce_directory = resouce_directory
+        self.resource_directory = resource_directory
         self.has_gpu = has_gpu
-        self.module = self.import_code()
 
-        self.infer_function = ensure_function(self.module, "infer")
-        self.train_function = ensure_function(self.module, "train")
+        self.module = None
+        self.infer_function = None
+        self.train_function = None
 
-        self.infer_stream = InferStream()
+        self.infer_stream = None
         self.infer_generator = None
         self.stepup = False
         super()
 
     def Setup(self, request, context):
         if not self.stepup:
+            self.module = self.import_code()
+            self.infer_function = ensure_function(self.module, "infer")
+            self.train_function = ensure_function(self.module, "train")
+            self.infer_stream = InferStream()
+
             self._setup_infer_generator()
             self.stepup = True
 
@@ -61,6 +66,9 @@ class TrainInferStreamServicer(train_infer_pb2_grpc.TrainInferStreamServiceServi
         return empty_pb2.Empty()
 
     def Infer(self, infer_request: InferRequest, context):
+        if self.stepup is None:
+            context.abort(code=grpc.StatusCode.FAILED_PRECONDITION, details="Call Setup first")
+
         try:
 
             self.infer_stream.value = decode_data(infer_request.argument.value, infer_request.argument.type)
