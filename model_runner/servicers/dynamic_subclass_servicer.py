@@ -1,4 +1,5 @@
 import grpc
+import sys
 
 from model_runner.grpc.generated import dynamic_subclass_pb2_grpc
 from model_runner.grpc.generated.commons_pb2 import Variant
@@ -17,18 +18,24 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
         try:
             class_name = request.className
             if class_name == '':
-                raise ValueError('class_name cannot be empty')
+                print('FAILED_PRECONDITION: class_name cannot be empty', file=sys.stderr)
+                context.abort(
+                    code=grpc.StatusCode.FAILED_PRECONDITION,
+                    details='class_name cannot be empty'
+                )
 
             args, kwargs = self.prepare_arguments(request.instanceArguments, request.instanceKwArguments)
             self.instance = class_resolver.load_instance(self.code_directory, class_name, *args, **kwargs)
 
             return SetupResponse()
         except ValueError as e:
+            print(f'FAILED_PRECONDITION: {str(e)}', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.FAILED_PRECONDITION,
                 details=str(e)
             )
         except Exception as e:
+            print(f'INTERNAL: {str(e)}', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=str(e)
@@ -36,6 +43,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
     def Call(self, request: CallRequest, context) -> CallResponse | None:
         if self.instance is None:
+            print('FAILED_PRECONDITION: Setup has not been called yet', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.FAILED_PRECONDITION,
                 details='Setup has not been called yet'
@@ -43,6 +51,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
         method_name = request.methodName
         if method_name == '':
+            print('INVALID_ARGUMENT: methodName cannot be empty', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.INVALID_ARGUMENT,
                 details='methodName cannot be empty'
@@ -51,6 +60,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
         try:
             method = getattr(self.instance, method_name)
         except AttributeError as e:
+            print(f'INTERNAL: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=f'Method "{method_name}" not found in class "{self.instance.__class__.__name__}"'
@@ -67,6 +77,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
             return CallResponse(methodResponse=Variant(type=type_of_result, value=encoded_result))
 
         except Exception as e:
+            print(f'INTERNAL: The model raised an exception: {str(e)}', file=sys.stderr)
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=f'The model raised an exception: {str(e)}'
