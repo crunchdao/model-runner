@@ -1,6 +1,10 @@
+import logging
+
 import importlib
 import inspect
 import pkgutil
+
+logger = logging.getLogger(f'model_runner.{__name__}')
 
 def load_instance(code_path: str, base_class_name: str, *args, **kwargs):
     """
@@ -15,21 +19,22 @@ def load_instance(code_path: str, base_class_name: str, *args, **kwargs):
     import sys
     sys.path.append(code_path)
 
+    logger.info(f"Loading class '{base_class_name}' from '{code_path}'")
     # todo: maybe is not required to walk packages and only import the root module ?
     base_class = resolve_class(base_class_name)
     for importer, module_name, is_package in pkgutil.walk_packages([code_path]):
         try:
             module = importlib.import_module(module_name)
-        except Exception as e:
-            print(f"Error importing module '{module_name}': {e}") # todo raise exception ?
+        except BaseException as e:
+            logger.error(f"Error importing module '{module_name}'", exc_info=True)
             continue
 
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, (base_class)) and obj is not base_class:
-                print(f"Found class '{obj.__name__}' that inherits from '{base_class.__name__}'.")
+                logger.info(f"Found class '{obj.__name__}' that inherits from '{base_class.__name__}'.")
                 return obj(*args, **kwargs)
             else:
-                print(f"Class '{obj.__name__}' does not inherit from '{base_class.__name__}'.")
+                logger.debug(f"Class '{obj.__name__}' does not inherit from '{base_class.__name__}'.")
 
     raise ImportError(f"No Inherited class found from '{base_class}'.")
 

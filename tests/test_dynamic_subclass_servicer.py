@@ -1,6 +1,7 @@
 # File: tests/test_dynamic_subclass_servicer.py
 import os
 import sys
+import logging
 
 import grpc
 import pytest
@@ -11,6 +12,12 @@ from model_runner.grpc.generated.dynamic_subclass_pb2_grpc import DynamicSubclas
 from model_runner.servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 from model_runner.utils.datatype_transformer import detect_data_type, decode_data
 from model_runner.utils.datatype_transformer import encode_data
+
+# Initialize logger for the test module
+logger = logging.getLogger(f'model_runner.{__name__}')
+logger_root = logging.getLogger('model_runner')
+logger_root.setLevel(logging.DEBUG)
+#logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 @pytest.fixture
@@ -32,7 +39,8 @@ def example_code_path():
 
 
 def test_setup_and_call_success(grpc_context, example_code_path):
-    print(f"code_directory: {example_code_path}")
+    logger.info("Starting test: test_setup_and_call_success")
+    logger.debug(f"code_directory: {example_code_path}")
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
     response = None
     request = SetupRequest(
@@ -45,7 +53,7 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     assert response is not None, print(grpc_context.abort.call_args)
 
     payload_raw = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
-    print(f'payload: {payload_raw}')
+    logger.debug(f'payload: {payload_raw}')
     payload: bytes = encode_data(VariantType.JSON, payload_raw)
     # Call phase
     call_request = CallRequest(
@@ -64,11 +72,12 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     call_response = servicer.Call(call_request, grpc_context)
     assert call_response is not None, print(grpc_context.abort.call_args)
     decoded_result = decode_data(call_response.methodResponse.value, call_response.methodResponse.type)
-    print("prediction:", decoded_result)
+    logger.info("Prediction result: %s", decoded_result)
     assert decoded_result and isinstance(decoded_result, dict)
 
 
 def test_call_without_setup_failure(grpc_context):
+    logger.info("Starting test: test_call_without_setup_failure")
     # Test case for a method call before setup
     servicer = DynamicSubclassServicer(code_directory="models_examples")
 
@@ -86,6 +95,7 @@ def test_call_without_setup_failure(grpc_context):
 
 
 def test_setup_failure_invalid_class(grpc_context, example_code_path):
+    logger.info("Starting test: test_setup_failure_invalid_class")
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
 
     request = SetupRequest(
@@ -102,6 +112,7 @@ def test_setup_failure_invalid_class(grpc_context, example_code_path):
 
 
 def test_call_invalid_method_failure(grpc_context, example_code_path):
+    logger.info("Starting test: test_call_invalid_method_failure")
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
     request = SetupRequest(
         className="birdgame.trackers.trackerbase.TrackerBase",

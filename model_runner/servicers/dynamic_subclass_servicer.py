@@ -1,3 +1,5 @@
+import logging
+
 import grpc
 import sys
 
@@ -6,6 +8,8 @@ from model_runner.grpc.generated.commons_pb2 import Variant
 from model_runner.grpc.generated.dynamic_subclass_pb2 import SetupResponse, SetupRequest, CallRequest, CallResponse
 from model_runner.utils import class_resolver
 from model_runner.utils.datatype_transformer import decode_data, detect_data_type, encode_data
+
+logger = logging.getLogger(f'model_runner.{__name__}')
 
 
 class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceServicer):
@@ -16,7 +20,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
     def Setup(self, request: SetupRequest, context):
         if self.instance is not None:
-            print('Setup has already been called and an instance exists, setup is ignored', file=sys.stdout)
+            logger.debug('[Coordinator] Setup has already been called and an instance exists, setup is ignored')
             return SetupResponse()
 
         try:
@@ -33,13 +37,13 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
             return SetupResponse()
         except ValueError as e:
-            print(f'FAILED_PRECONDITION: {str(e)}', file=sys.stderr)
+            logger.error('FAILED_PRECONDITION', exc_info=True)
             context.abort(
                 code=grpc.StatusCode.FAILED_PRECONDITION,
                 details=str(e)
             )
         except Exception as e:
-            print(f'INTERNAL: {str(e)}', file=sys.stderr)
+            logger.error('INTERNAL', exc_info=True)
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=str(e)
@@ -47,7 +51,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
     def Call(self, request: CallRequest, context) -> CallResponse | None:
         if self.instance is None:
-            print('FAILED_PRECONDITION: Setup has not been called yet', file=sys.stderr)
+            logger.error('[Coordinator] FAILED_PRECONDITION - Setup has not been called yet')
             context.abort(
                 code=grpc.StatusCode.FAILED_PRECONDITION,
                 details='Setup has not been called yet'
@@ -55,7 +59,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
         method_name = request.methodName
         if method_name == '':
-            print('INVALID_ARGUMENT: methodName cannot be empty', file=sys.stderr)
+            logger.error('[Coordinator] INVALID_ARGUMENT - methodName cannot be empty')
             context.abort(
                 code=grpc.StatusCode.INVALID_ARGUMENT,
                 details='methodName cannot be empty'
@@ -64,7 +68,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
         try:
             method = getattr(self.instance, method_name)
         except AttributeError as e:
-            print(f'INTERNAL: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"', file=sys.stderr)
+            logger.error(f'INTERNAL: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"')
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=f'Method "{method_name}" not found in class "{self.instance.__class__.__name__}"'
@@ -81,7 +85,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
             return CallResponse(methodResponse=Variant(type=type_of_result, value=encoded_result))
 
         except Exception as e:
-            print(f'INTERNAL: The model raised an exception: {str(e)}', file=sys.stderr)
+            logger.error(f'INTERNAL: The model raised an exception', exc_info=True)
             context.abort(
                 code=grpc.StatusCode.INTERNAL,
                 details=f'The model raised an exception: {str(e)}'
