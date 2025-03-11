@@ -62,6 +62,7 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     call_response = servicer.Call(call_request, grpc_context)
     assert call_response is not None, print(grpc_context.abort.call_args)
     assert call_response.status and call_response.status.code == "SUCCESS", print(call_response.status)
+    assert call_response.methodResponse.type == VariantType.NONE
 
     call_request = CallRequest(
         methodName="predict",
