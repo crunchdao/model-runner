@@ -8,7 +8,7 @@ import click
 import logging
 
 logger = logging.getLogger('model_runner')
-
+logging.basicConfig(level=logging.INFO, format="%(levelname)-8s - %(message)s")
 
 @click.command()
 @click.option('--address', default='[::]:50051', envvar='GRPC_ADDRESS', help='IP + Port of server GRPC.')
@@ -34,9 +34,9 @@ def serve(address, code_directory, resource_directory, has_gpu, main_file, logle
         server
     )
 
-    logger.basicConfig(level=logging.getLevelName(loglevel.upper()))
+    logger.setLevel(logging.getLevelName(loglevel.upper()))
 
     server.add_insecure_port(address)
-    logger.info(f'Server started on port {address}...')
+    logger.info(f'ModelRunner started and ready to serve')
     server.start()
     server.wait_for_termination()

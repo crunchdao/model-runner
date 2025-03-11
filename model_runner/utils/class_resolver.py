@@ -25,7 +25,7 @@ def load_instance(code_path: str, base_class_name: str, *args, **kwargs):
     for importer, module_name, is_package in pkgutil.walk_packages([code_path]):
         try:
             module = importlib.import_module(module_name)
-        except BaseException as e:
+        except Exception as e:
             logger.error(f"Error importing module '{module_name}'", exc_info=True)
             continue
 

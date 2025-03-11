@@ -5,12 +5,12 @@ from model_runner.grpc.generated.train_infer_pb2_grpc import TrainInferStreamSer
 from model_runner.grpc.generated.dynamic_subclass_pb2_grpc import DynamicSubclassService, DynamicSubclassServiceStub
 
 from model_runner.grpc.generated.train_infer_pb2 import InferRequest, InferResponse
-from model_runner.grpc.generated.commons_pb2 import Variant, VariantType, Argument
+from model_runner.grpc.generated.commons_pb2 import Variant, VariantType, Argument, KwArgument
 from model_runner.grpc.generated.dynamic_subclass_pb2 import SetupRequest, CallRequest, CallResponse
 
 from model_runner.utils.datatype_transformer import encode_data, decode_data
 
-SERVER_ADDRESS = "54.229.63.5:50051"
+SERVER_ADDRESS = "localhost:50051"
 
 
 # @pytest.mark.asyncio
@@ -112,7 +112,7 @@ def test_grpc_infer_bird_2():
     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
         # ModelRunnerStub is class generate and abstract remote call
         stub = DynamicSubclassServiceStub(channel)
-        stub.Setup(SetupRequest(className='birdgame.trackers.trackerbase.TrackerBase'))
+        stub.Setup(SetupRequest(className='birdgame.trackers.trackerbase.TrackerBase', instanceKwArguments=[KwArgument(keyword="horizon", data=Variant(type=VariantType.INT, value=encode_data(VariantType.INT, 1)))]))
         print("Stepup complete.")
 
         payload = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
@@ -125,6 +125,20 @@ def test_grpc_infer_bird_2():
         )
 
         prediction = stub.Call(CallRequest(methodName='predict'))
+        decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
+        print(f"result {decoded_result}")
 
+        # Add a reset call here
+        stub.Rest(empty_pb2.Empty())
+        stub.Setup(SetupRequest(className='birdgame.trackers.trackerbase.TrackerBase', instanceKwArguments=[KwArgument(keyword="horizon", data=Variant(type=VariantType.INT, value=encode_data(VariantType.INT, 1)))]))
+
+        stub.Call(CallRequest(
+            methodName='tick',
+            methodArguments=[
+                Argument(position=1, data=Variant(type=VariantType.JSON, value=payload_encoded))
+            ])
+        )
+
+        prediction = stub.Call(CallRequest(methodName='predict'))
         decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
         print(f"result {decoded_result}")

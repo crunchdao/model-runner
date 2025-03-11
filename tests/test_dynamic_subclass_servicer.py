@@ -17,8 +17,6 @@ from model_runner.utils.datatype_transformer import encode_data
 logger = logging.getLogger(f'model_runner.{__name__}')
 logger_root = logging.getLogger('model_runner')
 logger_root.setLevel(logging.DEBUG)
-#logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
 
 @pytest.fixture
 def grpc_context(mocker):
@@ -63,6 +61,7 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     )
     call_response = servicer.Call(call_request, grpc_context)
     assert call_response is not None, print(grpc_context.abort.call_args)
+    assert call_response.status and call_response.status.code == "SUCCESS", print(call_response.status)
 
     call_request = CallRequest(
         methodName="predict",
@@ -71,6 +70,7 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     )
     call_response = servicer.Call(call_request, grpc_context)
     assert call_response is not None, print(grpc_context.abort.call_args)
+    assert call_response.status and call_response.status.code == "SUCCESS", print(call_response.status)
     decoded_result = decode_data(call_response.methodResponse.value, call_response.methodResponse.type)
     logger.info("Prediction result: %s", decoded_result)
     assert decoded_result and isinstance(decoded_result, dict)
@@ -87,11 +87,9 @@ def test_call_without_setup_failure(grpc_context):
         methodKwArguments=[]
     )
 
-    with pytest.raises(grpc.RpcError):
-        servicer.Call(request, grpc_context)
-
-    assert grpc_context.abort_args[0] == grpc.StatusCode.FAILED_PRECONDITION
-    assert grpc_context.abort_args[1] == 'Setup has not been called yet'
+    call_response = servicer.Call(request, grpc_context)
+    assert call_response.status and call_response.status.code == "FAILED_PRECONDITION", print(call_response.status)
+    assert call_response.status and call_response.status.message == "Setup has not been called yet", print(call_response.status)
 
 
 def test_setup_failure_invalid_class(grpc_context, example_code_path):
@@ -104,11 +102,10 @@ def test_setup_failure_invalid_class(grpc_context, example_code_path):
         instanceKwArguments=[]
     )
 
-    with pytest.raises(grpc.RpcError):
-        servicer.Setup(request, grpc_context)
+    call_response = servicer.Setup(request, grpc_context)
 
-    assert grpc_context.abort_args[0] == grpc.StatusCode.FAILED_PRECONDITION
-    assert grpc_context.abort_args[1] == "Invalid class name 'InvalidModel'. Use 'module.ClassName' format."
+    assert call_response.status and call_response.status.code == "SETUP_FAILED", print(call_response.status)
+    assert call_response.status and call_response.status.message == "Invalid class name 'InvalidModel'. Use 'module.ClassName' format.", print(call_response.status)
 
 
 def test_call_invalid_method_failure(grpc_context, example_code_path):
@@ -129,8 +126,64 @@ def test_call_invalid_method_failure(grpc_context, example_code_path):
         methodKwArguments=[]
     )
 
-    with pytest.raises(grpc.RpcError):
-        servicer.Call(call_request, grpc_context)
+    call_response = servicer.Call(call_request, grpc_context)
 
-    assert grpc_context.abort_args[0] == grpc.StatusCode.INTERNAL
-    assert grpc_context.abort_args[1] == f'Method "non_existent_method" not found in class "QuantileRegressionRiverTracker"'
+    assert call_response.status and call_response.status.code == "BAD_IMPLEMENTATION", print(call_response.status)
+    assert call_response.status and call_response.status.message == 'Method "non_existent_method" not found in class "QuantileRegressionRiverTracker"', print(call_response.status)
+
+
+def test_rest(grpc_context, example_code_path):
+    logger.info("Starting test: test_rest")
+    servicer = DynamicSubclassServicer(code_directory=example_code_path)
+
+    # Test Rest without setup
+    rest_response = servicer.Rest(request=None, context=grpc_context)
+    assert rest_response.status and rest_response.status.code == "SUCCESS", print(rest_response.status)
+    assert rest_response.status and rest_response.status.message == "No instance exists to reset", print(rest_response.status)
+
+    # Test Rest after setup
+    setup_request = SetupRequest(
+        className="birdgame.trackers.trackerbase.TrackerBase",
+        instanceArguments=[],
+        instanceKwArguments=[]
+    )
+    setup_response = servicer.Setup(setup_request, grpc_context)
+    assert setup_response.status and setup_response.status.code == "SUCCESS", print(setup_response.status)
+
+    rest_response = servicer.Rest(request=None, context=grpc_context)
+    assert rest_response.status and rest_response.status.code == "SUCCESS", print(rest_response.status)
+    assert rest_response.status and rest_response.status.message == "Instance successfully reset", print(rest_response.status)
+
+
+def test_setup_and_call_success(grpc_context, example_code_path):
+    logger.info("Starting test: test_setup_and_call_success")
+    logger.debug(f"code_directory: {example_code_path}")
+    servicer = DynamicSubclassServicer(code_directory=example_code_path)
+    response = None
+    request = SetupRequest(
+        className="birdgame.trackers.trackerbase.TrackerBase",
+        instanceArguments=[],
+        instanceKwArguments=[]
+    )
+    response = servicer.Setup(request, grpc_context)
+
+    assert response is not None, print(grpc_context.abort.call_args)
+
+    payload_raw = {}
+    payload: bytes = encode_data(VariantType.JSON, payload_raw)
+    # Call phase
+    call_request = CallRequest(
+        methodName="tick",
+        methodArguments=[Argument(position=1, data=Variant(type=VariantType.JSON, value=payload))],
+        methodKwArguments=[]
+    )
+
+    call_response = servicer.Call(call_request, grpc_context)
+
+    assert call_response.status and call_response.status.code == "MODEL_FAILED", print(call_response.status)
+    assert call_response.status and call_response.status.message is not None
+
+
+
+if __name__ == '__main__':
+    pytest.main()

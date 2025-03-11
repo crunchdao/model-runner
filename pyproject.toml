@@ -25,6 +25,7 @@ boto3 = "^1.35.91"
 pytest-mock = "^3.14.0"
 protoletariat = "^3.3.9"
 birdgame = "^0.0.2"
+pytest-cov = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]
