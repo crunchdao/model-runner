@@ -48,6 +48,16 @@ def serve(address, secure_address, code_directory, resource_directory, has_gpu, 
             [(ssl_key, ssl_cert)]
         )
         server.add_secure_port(secure_address, server_credentials)
+    else:
+        missing_cert = ssl_cert is None
+        missing_key = ssl_key is None
+        missing_both = missing_cert and missing_key
+        if missing_both:
+            logger.info(f'No SSL/TLS certificate and key provided, using insecure connection')
+        else:
+            message = f'SSL/TLS certificate and key provided, but one of them is missing missing_cert: {missing_cert}, missing_key: {missing_key}'
+            logger.error(message)
+            raise ValueError(message)
 
     logger.info(f'ModelRunner started and ready to serve')
     server.start()
