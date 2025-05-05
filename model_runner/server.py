@@ -5,11 +5,14 @@ from model_runner.servicers.train_infer_servicer import TrainInferStreamServicer
 from model_runner.servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 import click
 import os
+from model_runner.dstack import app
 
 import logging
 
 logger = logging.getLogger('model_runner')
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s - %(message)s")
+
+app.mount('/dstack', app)
 
 @click.command()
 @click.option('--address', default='[::]:50051', envvar='GRPC_ADDRESS', help='IP + Port of server GRPC.')
