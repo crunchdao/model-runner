@@ -12,6 +12,14 @@ from model_runner.utils.datatype_transformer import encode_data, decode_data
 
 SERVER_ADDRESS = "localhost:50051"
 
+def get_secure_phala_channel_for_application_id(application_id: str):
+    # Load the self-signed cert from the server
+    with open('phala/certs/phala_wildcard.crt', 'rb') as f:
+        trusted_certs = f.read()
+
+    credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+    channel = grpc.secure_channel(f"{application_id}-5002s.dstack-prod5.phala.network", credentials)
+    return channel
 
 # @pytest.mark.asyncio
 # async def test_grpc_streaming_from_user_input():
@@ -109,7 +117,7 @@ def test_grpc_infer_bird_reinit():
 
 
 def test_grpc_infer_bird_2():
-    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+    with get_secure_phala_channel_for_application_id("65cadacd7b7a62c591e0ccd216e8a708b01cc1fc") as channel:
         # ModelRunnerStub is class generate and abstract remote call
         stub = DynamicSubclassServiceStub(channel)
         stub.Setup(SetupRequest(className='birdgame.trackers.trackerbase.TrackerBase', instanceKwArguments=[KwArgument(keyword="horizon", data=Variant(type=VariantType.INT, value=encode_data(VariantType.INT, 1)))]))
@@ -125,6 +133,7 @@ def test_grpc_infer_bird_2():
         )
 
         prediction = stub.Call(CallRequest(methodName='predict'))
+        print(f"prediction: {prediction}")
         decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
         print(f"result {decoded_result}")
 
@@ -142,3 +151,6 @@ def test_grpc_infer_bird_2():
         prediction = stub.Call(CallRequest(methodName='predict'))
         decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
         print(f"result {decoded_result}")
+
+if __name__ == "__main__":
+    test_grpc_infer_bird_2()
