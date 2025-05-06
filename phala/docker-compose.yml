@@ -1,18 +1,15 @@
 version: '3.8'
 services:
   app:
-    image: 728958649654.dkr.ecr.eu-west-1.amazonaws.com/crunchers-models:19311
-    container_name: model-runner-19311
+    image: borisnieuwen/secret_model:0.1
+    container_name: secret-model-runner
     ports:
       - "5001:50051"
       - "5002:50052"
+      - "80:8001"
     volumes:
       - /var/run/tappd.sock:/var/run/tappd.sock
     restart: always
     environment:
-      - DSTACK_AWS_ACCESS_KEY_ID=${DSTACK_AWS_ACCESS_KEY_ID}
-      - DSTACK_AWS_SECRET_ACCESS_KEY=${DSTACK_AWS_SECRET_ACCESS_KEY}
-      - DSTACK_AWS_REGION=${DSTACK_AWS_REGION}
-      - DSTACK_AWS_ECR_REGISTRY=${DSTACK_AWS_ECR_REGISTRY}
       - SSL_CERT=${SSL_CERT}
       - SSL_KEY=${SSL_KEY}

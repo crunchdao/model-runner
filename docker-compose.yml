@@ -1,0 +1,12 @@
+services:
+  app:
+    image: ${IMAGE_REPO_NAME}:${IMAGE_TAG}
+    container_name: model-runner
+    ports:
+      - "5010:50051"
+      - "5020:50052"
+      - "80:8001"
+    volumes:
+      - /var/run/tappd.sock:/var/run/tappd.sock
+    env_file: ".env"
+

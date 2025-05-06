@@ -1,5 +1,6 @@
 from concurrent import futures
 import grpc
+import base64
 from model_runner.grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
 from model_runner.servicers.train_infer_servicer import TrainInferStreamServicer
 from model_runner.servicers.dynamic_subclass_servicer import DynamicSubclassServicer
@@ -41,13 +42,14 @@ def serve(address, secure_address, code_directory, resource_directory, has_gpu, 
     logger.setLevel(logging.getLevelName(loglevel.upper()))
 
     server.add_insecure_port(address)
-    # Create server credentials with SSL/TLS certificate and wildcard certificate on *.dstack-prod5.phala.network
+    
     ssl_cert = os.getenv('SSL_CERT')
     ssl_key = os.getenv('SSL_KEY')
+    
     if ssl_cert and ssl_key:
-        logger.info(f'Using SSL/TLS certificate and key')
+        logger.info(f'Using SSL/TLS certificate and key on secure port {secure_address}')
         server_credentials = grpc.ssl_server_credentials(
-            [(ssl_key, ssl_cert)]
+            [(base64.b64decode(ssl_key), base64.b64decode(ssl_cert))]
         )
         server.add_secure_port(secure_address, server_credentials)
     else:

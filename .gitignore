@@ -9,3 +9,4 @@ docker/packages
 __pycache__/
 *.py[cod]
 *$py.class
+build
