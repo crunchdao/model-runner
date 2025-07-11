@@ -3,6 +3,7 @@ import struct
 import io
 import pandas
 import pyarrow.parquet as pq
+import pyarrow as pa
 from model_runner.grpc.generated.commons_pb2 import VariantType
 
 
@@ -15,9 +16,9 @@ def encode_data(data_type: VariantType, data) -> bytes:
     elif data_type == VariantType.STRING:
         return data.encode("utf-8")
     elif data_type == VariantType.PARQUET:
-        table = pandas.Table.from_pandas(data)
+        table = pa.Table.from_pandas(data) if isinstance(data, pandas.DataFrame) else data
         sink = io.BytesIO()
-        pandas.write_table(table, sink)
+        pq.write_table(table, sink)
         return sink.getvalue()
     elif data_type == VariantType.JSON:
         try:
