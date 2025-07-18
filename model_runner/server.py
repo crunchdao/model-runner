@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)-8s - %(message)s")
 @click.command()
 @click.option('--address', default='[::]:50051', envvar='GRPC_ADDRESS', help='IP + Port of server GRPC.')
 @click.option('--code-directory', type=click.Path(exists=True, file_okay=False), envvar='CODE_DIRECTORY', default='/workspace/submission/code')
-@click.option('--resource-directory', type=click.Path(exists=True, file_okay=False), envvar='RESOURCE_DIRECTORY', default='/workspace/resources')
+@click.option('--resource-directory', type=click.Path(file_okay=False), envvar='RESOURCE_DIRECTORY', default='/workspace/resources')
 @click.option('--has-gpu', type=bool, envvar='HAS_GPU', default=False, help='Information if GPU is available')
 @click.option('--main-file', envvar='MAIN_FILE', default='main.py', help="main file's name of model")
 @click.option('--log-level', type=click.Choice(["debug", "info", "warning", "error", "critical"], case_sensitive=False), default='info', envvar='LOG_LEVEL', help='Logging level')
@@ -52,7 +52,7 @@ def cli(
 
     server.add_insecure_port(address)
 
-    logger.info(f'ModelRunner started and ready to serve')
+    logger.info(f'ModelRunner started and ready to serve on {address}')
 
     server.start()
     server.wait_for_termination()
