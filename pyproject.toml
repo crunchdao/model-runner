@@ -35,6 +35,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-model-runner = "model_runner.server:serve"
+model-runner = "model_runner.server:cli"
 _generate-proto = "scripts.generate_proto:run"
 _build-publish = "scripts.build_package:run"

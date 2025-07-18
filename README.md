@@ -14,7 +14,7 @@ pip install crunch-model-runner
 Once dependencies are installed, you can run the main application using:
 
 ```bash
-poetry run python __main__.py --code-directory tests/models_examples/bill
+model-runner --code-directory tests/models_examples/bill
 ```
 
 Replace `--code-directory` with the path to the directory containing the code that should be made available remotely.
