@@ -43,6 +43,10 @@ To run the tests for this project, execute:
 Make sure the gRPC server is correctly set up and running before running the tests. (Next version of tests will introduce this automatically)
 
 ```bash
+# Install example models dependencies, must only be run once
+poetry run pip install -r tests/models_examples/quantile_regression_river/requirements.txt
+
+# Run pytest
 poetry run pytest
 ```
 
