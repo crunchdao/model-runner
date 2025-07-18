@@ -1,3 +1,5 @@
+# Contribute
+
 # Getting Started
 
 To get started with this project, follow the steps below:
@@ -13,8 +15,8 @@ Make sure you have the following installed:
 
 1. Clone the repository:
    ```bash
-   git clone <repository_url>
-   cd <project_folder>
+   git clone git@github.com:crunchdao/model-runner.git
+   cd model-runner
    ```
 
 2. Use Poetry to install the dependencies:
@@ -52,7 +54,7 @@ poetry run pytest
 
 # Publishing 
 
-Currently, code delivery is done through a build and push to S3, where the orchestrator retrieves it to build a Docker image  (to improve in the futur)
+Currently, code delivery is done through a build and push to S3, where the orchestrator retrieves it to build a Docker image. (to improve in the futur)
 ```bash
 python3 scripts/build_package.py 
 ```
