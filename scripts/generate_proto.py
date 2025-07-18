@@ -14,7 +14,6 @@ def run():
     print(f"Executing protoc: {command}")
     subprocess.run(command, shell=True, check=True)
 
-
     # fix import by adding from.
     command = (
         "poetry run protol "
@@ -26,3 +25,7 @@ def run():
     )
     print(f"Executing protol : {command}")
     subprocess.run(command, shell=True, check=True)
+
+
+if __name__ == "__main__":
+    run()

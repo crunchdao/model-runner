@@ -32,7 +32,7 @@ Make sure you have the following installed:
 This project uses [gRPC](https://grpc.io/) for communication. You can generate the necessary gRPC code if you change the `[model_runner.proto](model_runner/protos/model_runner.proto)` file by using the following command:
 
 ```bash
-poetry run _generate-proto
+python3 scripts/generate_proto.py
 ```
 
 Ensure all `.proto` files are present in the appropriate directory before running the above command.
@@ -50,5 +50,5 @@ poetry run pytest
 
 Currently, code delivery is done through a build and push to S3, where the orchestrator retrieves it to build a Docker image  (to improve in the futur)
 ```bash
-poetry run _build-publish
+python3 scripts/build_package.py 
 ```

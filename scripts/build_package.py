@@ -1,6 +1,8 @@
 import os
 import subprocess
+
 import boto3
+
 
 def run():
     """Automates the Poetry build process and uploads artifacts to S3."""
@@ -33,3 +35,7 @@ def run():
     else:
         print("Build failed!")
         print(result.stderr)
+
+
+if __name__ == "__main__":
+    run()
