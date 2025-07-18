@@ -53,7 +53,11 @@ class TrainInferStreamServicer(train_infer_pb2_grpc.TrainInferStreamServiceServi
 
     def Setup(self, request, context):
         if not self._setup_called:
-            os.makedirs(self.resource_directory, exist_ok=True)
+
+            # TODO The resource directory should NOT be blank, but a test requires it.
+            # What happen if the user wants to store things AFTER his code has started?
+            if self.resource_directory:
+                os.makedirs(self.resource_directory, exist_ok=True)
 
             self.module = self.import_code()
             self.infer_function = ensure_function(self.module, "infer")
