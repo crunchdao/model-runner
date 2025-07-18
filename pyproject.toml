@@ -1,10 +1,13 @@
 [tool.poetry]
-name = "model-runner"
+name = "crunch-model-runner"
 version = "0.1.1"
 description = ""
 authors = ["boutrig abdennour <abdennour.boutrig@crunchdao.com>"]
 readme = "README.md"
 exclude = ["scripts/*"]
+packages = [
+    { include = "model_runner" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
