@@ -18,6 +18,7 @@ logger = logging.getLogger(f'model_runner.{__name__}')
 logger_root = logging.getLogger('model_runner')
 logger_root.setLevel(logging.DEBUG)
 
+
 @pytest.fixture
 def grpc_context(mocker):
     mock = mocker.Mock(spec=grpc.ServicerContext)
@@ -42,7 +43,7 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
     response = None
     request = SetupRequest(
-        className="birdgame.trackers.trackerbase.TrackerBase",
+        className="trackerbase.TrackerBase",
         instanceArguments=[],
         instanceKwArguments=[]
     )
@@ -113,7 +114,7 @@ def test_call_invalid_method_failure(grpc_context, example_code_path):
     logger.info("Starting test: test_call_invalid_method_failure")
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
     request = SetupRequest(
-        className="birdgame.trackers.trackerbase.TrackerBase",
+        className="trackerbase.TrackerBase",
         instanceArguments=[],
         instanceKwArguments=[]
     )
@@ -144,7 +145,7 @@ def test_rest(grpc_context, example_code_path):
 
     # Test Rest after setup
     setup_request = SetupRequest(
-        className="birdgame.trackers.trackerbase.TrackerBase",
+        className="trackerbase.TrackerBase",
         instanceArguments=[],
         instanceKwArguments=[]
     )
@@ -156,13 +157,13 @@ def test_rest(grpc_context, example_code_path):
     assert rest_response.status and rest_response.status.message == "Instance successfully reset", print(rest_response.status)
 
 
-def test_setup_and_call_success(grpc_context, example_code_path):
+def test_setup_and_call_failed(grpc_context, example_code_path):
     logger.info("Starting test: test_setup_and_call_success")
     logger.debug(f"code_directory: {example_code_path}")
     servicer = DynamicSubclassServicer(code_directory=example_code_path)
     response = None
     request = SetupRequest(
-        className="birdgame.trackers.trackerbase.TrackerBase",
+        className="trackerbase.TrackerBase",
         instanceArguments=[],
         instanceKwArguments=[]
     )
@@ -185,6 +186,33 @@ def test_setup_and_call_success(grpc_context, example_code_path):
     assert call_response.status and call_response.status.message is not None
 
 
+def test_call_with_optional_args(grpc_context, example_code_path):
+    logger.info("Starting test: test_setup_and_call_success")
+    logger.debug(f"code_directory: {example_code_path}")
+    servicer = DynamicSubclassServicer(code_directory=example_code_path)
+    response = None
+    request = SetupRequest(
+        className="trackerbase.TrackerBase",
+        instanceArguments=[],
+        instanceKwArguments=[]
+    )
+    response = servicer.Setup(request, grpc_context)
+
+    assert response is not None, print(grpc_context.abort.call_args)
+
+    payload_raw = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1}
+    payload: bytes = encode_data(VariantType.JSON, payload_raw)
+    # Call phase
+    call_request = CallRequest(
+        methodName="tick",
+        methodArguments=[Argument(position=1, data=Variant(type=VariantType.JSON, value=payload))],
+        methodKwArguments=[KwArgument(keyword="optional", data=Variant(type=VariantType.INT, value=encode_data(VariantType.INT, 1)))]
+    )
+
+    call_response = servicer.Call(call_request, grpc_context)
+    assert call_response is not None, print(grpc_context.abort.call_args)
+    assert call_response.status and call_response.status.code == "SUCCESS", print(call_response.status)
+    assert call_response.methodResponse.type == VariantType.NONE
 
 if __name__ == '__main__':
     pytest.main()

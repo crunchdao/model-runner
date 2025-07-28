@@ -1,9 +1,10 @@
+from collections import deque
+
+import inspect
+
 from enum import Enum
 
 import logging
-
-import grpc
-import sys
 
 from model_runner.grpc.generated import dynamic_subclass_pb2_grpc
 from model_runner.grpc.generated.commons_pb2 import Variant, Status
@@ -29,6 +30,8 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
     def __init__(self, code_directory):
         self.code_directory = code_directory
         self.instance = None
+        self.methods = dict()
+        self.reported_unused = deque(maxlen=100)
         super().__init__()
 
     def Setup(self, request: SetupRequest, context) -> SetupResponse:
@@ -71,23 +74,35 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 status=Status(code=DynamicSubclassStatus.INVALID_ARGUMENT.name, message='methodName cannot be empty')
             )
 
-        method = None
-        try:
-            method = getattr(self.instance, method_name)
-        except AttributeError as e:
-            logger.error(f'BAD_IMPLEMENTATION: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"')
-            return CallResponse(
-                status=Status(
-                    code=DynamicSubclassStatus.BAD_IMPLEMENTATION.name,
-                    message=f'Method "{method_name}" not found in class "{self.instance.__class__.__name__}"'
+        if method_name not in self.methods:
+            try:
+                method = getattr(self.instance, method_name)
+            except AttributeError as e:
+                logger.error(f'BAD_IMPLEMENTATION: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"')
+                return CallResponse(
+                    status=Status(
+                        code=DynamicSubclassStatus.BAD_IMPLEMENTATION.name,
+                        message=f'Method "{method_name}" not found in class "{self.instance.__class__.__name__}"'
+                    )
                 )
-            )
+            self.methods[method_name] = method, inspect.signature(method).parameters.keys()
+
+        method, signature_params = self.methods[method_name]
 
         try:
             args, kwargs = self.prepare_arguments(request.methodArguments, request.methodKwArguments)
+            expected_kwargs = {
+                k: v for i, (k, v) in enumerate(kwargs.items()) if k in list(signature_params)[len(args):]
+            }
+
+
+            unused_parameters = [k for k in kwargs.keys() if k not in expected_kwargs.keys()]
+            if unused_parameters and unused_parameters not in self.reported_unused:
+                logger.warning(f'The following parameters are not used: {', '.join(unused_parameters)}. You may consider utilizing them if relevant to your logic.')
+                self.reported_unused.append(unused_parameters)
 
             logger.debug('Call to method "%s" with positional arguments: %s, keyword arguments: %s', method_name, args, kwargs)
-            method_result = method(*args, **kwargs)
+            method_result = method(*args, **expected_kwargs)
             logger.debug('Model response: %s', method_result)
             if method_result is None:
                 return CallResponse(status=Status(code=DynamicSubclassStatus.SUCCESS.name, message=''))
