@@ -1,5 +1,6 @@
 import grpc
 from google.protobuf import empty_pb2
+from grpc_health.v1 import health_pb2_grpc, health_pb2
 
 from model_runner.grpc.generated.train_infer_pb2_grpc import TrainInferStreamServiceStub
 from model_runner.grpc.generated.dynamic_subclass_pb2_grpc import DynamicSubclassService, DynamicSubclassServiceStub
@@ -142,3 +143,9 @@ def test_grpc_infer_bird_2():
         prediction = stub.Call(CallRequest(methodName='predict'))
         decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
         print(f"result {decoded_result}")
+
+def test_health_call():
+    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+        stub = health_pb2_grpc.HealthStub(channel)
+        resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
+        assert resp.status == health_pb2.HealthCheckResponse.SERVING

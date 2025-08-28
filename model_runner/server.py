@@ -4,13 +4,14 @@ from concurrent.futures import ThreadPoolExecutor
 import click
 import grpc
 
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
+
 from .grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
 from .servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 from .servicers.train_infer_servicer import TrainInferStreamServicer
 
 logger = logging.getLogger('model_runner')
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s - %(message)s")
-
 
 @click.command()
 @click.option('--address', default='[::]:50051', envvar='GRPC_ADDRESS', help='IP + Port of server GRPC.')
@@ -31,17 +32,17 @@ def cli(
 
     logger.setLevel(logging.getLevelName(log_level.upper()))
 
-    server = grpc.server(ThreadPoolExecutor(max_workers=1))
+    # Use at least 2 workers to ensure Health checks are always responsive,
+    # since the other service methods are restricted to one concurrent call
+    server = grpc.server(ThreadPoolExecutor(max_workers=2))
 
-    train_infer_pb2_grpc.add_TrainInferStreamServiceServicer_to_server(
-        TrainInferStreamServicer(
-            code_directory=code_directory,
-            resource_directory=resource_directory,
-            has_gpu=has_gpu,
-            main_file=main_file
-        ),
-        server
+    health_servicer = health.HealthServicer(
+        experimental_non_blocking=True,
+        experimental_thread_pool=ThreadPoolExecutor(max_workers=2)
     )
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+
+    health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
 
     dynamic_subclass_pb2_grpc.add_DynamicSubclassServiceServicer_to_server(
         DynamicSubclassServicer(
