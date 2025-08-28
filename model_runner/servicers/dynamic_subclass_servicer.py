@@ -38,8 +38,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
         super().__init__()
 
     def Setup(self, request: SetupRequest, context) -> SetupResponse:
-        self._enter_or_abort(context)
-        try:
+        with self._exclusive(context):
             logger.info('Setup of the model requested')
             if self.instance is not None:
                 logger.debug('[Coordinator] Setup has already been called and an instance exists, setup is ignored')
@@ -65,12 +64,8 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 logger.error('SETUP_FAILED: An exception occurred during setup', exc_info=True)
                 return SetupResponse(status=Status(code=DynamicSubclassStatus.SETUP_FAILED.name, message=str(e)))
 
-        finally:
-            self._exit()
-
     def Call(self, request: CallRequest, context) -> CallResponse | None:
-        self._enter_or_abort(context)
-        try:
+        with self._exclusive(context):
             if self.instance is None:
                 logger.error('[Coordinator] FAILED_PRECONDITION - Setup has not been called yet')
                 return CallResponse(
@@ -130,12 +125,9 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 return CallResponse(
                     status=Status(code=DynamicSubclassStatus.MODEL_FAILED.name, message=f'The model raised an exception: {str(e)}')
                 )
-        finally:
-            self._exit()
 
     def Rest(self, request: empty_pb2.Empty, context) -> RestResponse:
-        self._enter_or_abort(context)
-        try:
+        with self._exclusive(context):
             logger.info('[Coordinator] Resetting the current instance')
             if self.instance is None:
                 logger.warning('[Coordinator] No existing instance to reset')
@@ -163,8 +155,6 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                         message=f'Failed to reset instance: {str(e)}'
                     )
                 )
-        finally:
-            self._exit()
 
     @staticmethod
     def prepare_arguments(args, kwargs):
