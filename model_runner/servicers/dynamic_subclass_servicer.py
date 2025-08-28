@@ -30,7 +30,6 @@ class DynamicSubclassStatus(Enum):
 
 class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceServicer, ExclusiveServiceMixin):
     def __init__(self, code_directory):
-        self.call_locker = threading.Lock()
         self.code_directory = code_directory
         self.instance = None
         self.methods = dict()
