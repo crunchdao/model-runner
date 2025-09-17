@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crunch-model-runner"
-version = "0.4.1"
+version = "0.5.0"
 description = ""
 authors = ["boutrig abdennour <abdennour.boutrig@crunchdao.com>"]
 readme = "README.md"

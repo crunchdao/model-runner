@@ -11,7 +11,7 @@ from model_runner.grpc.generated.dynamic_subclass_pb2 import SetupRequest, CallR
 
 from model_runner.utils.datatype_transformer import encode_data, decode_data
 
-SERVER_ADDRESS = "localhost:50051"
+SERVER_ADDRESS = "abaeda2fb41df4ddedad9e7c7d112e20480ba50b-50051g.dstack-prod4.phala.network:443"
 
 
 # @pytest.mark.asyncio
@@ -145,7 +145,12 @@ def test_grpc_infer_bird_2():
         print(f"result {decoded_result}")
 
 def test_health_call():
-    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+    with open("isrgrootx1.crt", "rb") as f:
+        trusted_certs = f.read()
+
+    creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+
+    with grpc.secure_channel(SERVER_ADDRESS, credentials=creds) as channel:
         stub = health_pb2_grpc.HealthStub(channel)
         resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
         assert resp.status == health_pb2.HealthCheckResponse.SERVING

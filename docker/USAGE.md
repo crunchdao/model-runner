@@ -27,6 +27,25 @@ This directory contains a **generic, reusable** Docker setup that mounts code an
 docker-compose up model-runner
 ```
 
+## Versioning
+
+The image supports proper semantic versioning:
+
+```bash
+# Check current version
+make version
+
+# Build with current version (0.5.0) and latest tags
+make build
+
+# Build with specific version
+make build VERSION=0.6.0
+
+# The following images will be created:
+# - crunch-dynamic-model-runner:0.5.0 (version-specific)
+# - crunch-dynamic-model-runner:latest (always points to latest build)
+```
+
 ### Using Docker Run
 
 ```bash

@@ -2,15 +2,17 @@
 
 # Configuration
 IMAGE_NAME = crunch-dynamic-model-runner
+VERSION ?= 0.5.0
 TAG = latest
 FULL_NAME = $(IMAGE_NAME):$(TAG)
+VERSIONED_NAME = $(IMAGE_NAME):$(VERSION)
 
 # Directories
 EXAMPLE_DIR = example
 CODE_DIR = $(EXAMPLE_DIR)/submission/code
 RESOURCES_DIR = $(EXAMPLE_DIR)/resources
 
-.PHONY: help build run stop clean logs shell test example
+.PHONY: help build run stop clean logs shell test example version tag-release build-push build-all push
 
 help: ## Show this help message
 	@echo "Model Runner Generic Docker Image"
@@ -18,9 +20,10 @@ help: ## Show this help message
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the generic Docker image
+build: ## Build the generic Docker image with version and latest tags
 	@echo "Building generic model-runner image for amd64..."
-	docker build --platform linux/amd64 -f Dockerfile.generic -t $(FULL_NAME) ..
+	@echo "Version: $(VERSION)"
+	docker build --platform linux/amd64 -f Dockerfile.generic -t $(VERSIONED_NAME) -t $(FULL_NAME) ..
 
 run: ## Run the model-runner with example code (requires build first)
 	@echo "Running model-runner with example code..."
@@ -89,43 +92,66 @@ check-health: ## Check if the service is healthy
 	@echo "Checking service health..."
 	@timeout 10 bash -c 'until nc -z localhost 50051; do sleep 1; done' && echo "Service is responding on port 50051" || echo "Service is not responding"
 
-build-all: ## Build both regular and GPU versions
+build-all: ## Build both regular and GPU versions with versioning
 	@$(MAKE) build
 	@echo "Building GPU version for amd64..."
-	docker build --platform linux/amd64 -f Dockerfile.generic -t $(IMAGE_NAME):$(TAG)-gpu --build-arg BASE_IMAGE=nvidia/cuda:11.8-runtime-ubuntu20.04 ..
+	docker build --platform linux/amd64 -f Dockerfile.generic \
+		-t $(IMAGE_NAME):$(VERSION)-gpu \
+		-t $(IMAGE_NAME):$(TAG)-gpu \
+		--build-arg BASE_IMAGE=nvidia/cuda:11.8-runtime-ubuntu20.04 ..
 
-push: ## Push image to registry (set REGISTRY variable first)
+push: ## Push both versioned and latest images to registry
 	@if [ -z "$(REGISTRY)" ]; then \
 		echo "Error: Please set REGISTRY variable (e.g., make push REGISTRY=your-registry.com)"; \
 		exit 1; \
 	fi
+	@echo "Pushing version $(VERSION) and latest tags..."
+	docker tag $(VERSIONED_NAME) $(REGISTRY)/$(VERSIONED_NAME)
 	docker tag $(FULL_NAME) $(REGISTRY)/$(FULL_NAME)
+	docker push $(REGISTRY)/$(VERSIONED_NAME)
 	docker push $(REGISTRY)/$(FULL_NAME)
 
-build-push: ## Build and push image in one step (amd64 only)
+build-push: ## Build and push both versioned and latest images in one step
 	@if [ -z "$(REGISTRY)" ]; then \
 		echo "Error: Please set REGISTRY variable (e.g., make build-push REGISTRY=your-registry.com)"; \
 		exit 1; \
 	fi
-	@echo "Building and pushing amd64 image to $(REGISTRY)/$(FULL_NAME)..."
-	docker buildx build --platform linux/amd64 -f Dockerfile.generic -t $(REGISTRY)/$(FULL_NAME) --push ..
+	@echo "Building and pushing amd64 image version $(VERSION) and latest..."
+	docker buildx build --platform linux/amd64 -f Dockerfile.generic \
+		-t $(REGISTRY)/$(VERSIONED_NAME) \
+		-t $(REGISTRY)/$(FULL_NAME) \
+		--push ..
+
+version: ## Show current version
+	@echo "Current version: $(VERSION)"
+	@echo "Image names:"
+	@echo "  Versioned: $(VERSIONED_NAME)"
+	@echo "  Latest: $(FULL_NAME)"
+
+tag-release: ## Tag the current commit with version
+	@echo "Tagging release $(VERSION)..."
+	git tag -a v$(VERSION) -m "Release version $(VERSION)"
+	git push origin v$(VERSION)
 
 # Usage examples
 usage: ## Show usage examples
 	@echo "Usage Examples:"
 	@echo "==============="
 	@echo ""
-	@echo "1. Quick start:"
-	@echo "   make build run"
+	@echo "1. Build with version tags:"
+	@echo "   make build"
 	@echo ""
-	@echo "2. Development mode:"
+	@echo "2. Build specific version:"
+	@echo "   make build VERSION=0.6.0"
+	@echo ""
+	@echo "3. Push to registry:"
+	@echo "   make push REGISTRY=your-registry.com"
+	@echo ""
+	@echo "4. Build and push in one step:"
+	@echo "   make build-push REGISTRY=your-registry.com"
+	@echo ""
+	@echo "5. Development mode:"
 	@echo "   make dev"
 	@echo ""
-	@echo "3. Using docker-compose:"
-	@echo "   make run-compose"
-	@echo ""
-	@echo "4. Check logs:"
-	@echo "   make logs"
-	@echo ""
-	@echo "5. Get a shell:"
-	@echo "   make shell"
+	@echo "6. Check current version:"
+	@echo "   make version"
