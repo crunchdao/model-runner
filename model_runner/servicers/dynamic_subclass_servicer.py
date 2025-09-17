@@ -52,7 +52,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 args, kwargs = self.prepare_arguments(request.instanceArguments, request.instanceKwArguments)
                 self.instance = class_resolver.load_instance(self.code_directory, class_name, *args, **kwargs)
 
-                logger.info(f'Successfully created instance of class: {self.instance.__class__.__name__} with arguments: {args} and keyword arguments: {kwargs}')
+                logger.info('Successfully created instance of class: %s with arguments: %s and keyword arguments: %s', self.instance.__class__.__name__, args, kwargs)
                 logger.info('Setup successfully complete')
 
                 return SetupResponse(status=Status(code=DynamicSubclassStatus.SUCCESS.name, message='Instance created successfully'))
@@ -82,7 +82,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 try:
                     method = getattr(self.instance, method_name)
                 except AttributeError as e:
-                    logger.error(f'BAD_IMPLEMENTATION: Method "{method_name}" not found in class "{self.instance.__class__.__name__}"')
+                    logger.error('BAD_IMPLEMENTATION: Method "%s" not found in class "%s"', method_name, self.instance.__class__.__name__)
                     return CallResponse(
                         status=Status(
                             code=DynamicSubclassStatus.BAD_IMPLEMENTATION.name,
@@ -101,7 +101,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
                 unused_parameters = [k for k in kwargs.keys() if k not in expected_kwargs.keys()]
                 if unused_parameters and unused_parameters not in self.reported_unused:
-                    logger.warning(f'The following parameters are not used: {', '.join(unused_parameters)}. You may consider utilizing them if relevant to your logic.')
+                    logger.warning('The following parameters are not used: %s. You may consider utilizing them if relevant to your logic.', ', '.join(unused_parameters))
                     self.reported_unused.append(unused_parameters)
 
                 logger.debug('Call to method "%s" with positional arguments: %s, keyword arguments: %s', method_name, args, kwargs)
@@ -120,7 +120,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
                 )
 
             except Exception as e:
-                logger.error(f'INTERNAL: The model raised an exception', exc_info=True)
+                logger.error('INTERNAL: The model raised an exception', exc_info=True)
                 return CallResponse(
                     status=Status(code=DynamicSubclassStatus.MODEL_FAILED.name, message=f'The model raised an exception: {str(e)}')
                 )

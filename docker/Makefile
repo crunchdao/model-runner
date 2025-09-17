@@ -1,8 +1,8 @@
 # Makefile for Generic Model Runner Docker Image
 
 # Configuration
-IMAGE_NAME = model-runner
-TAG = generic
+IMAGE_NAME = crunch-dynamic-model-runner
+TAG = latest
 FULL_NAME = $(IMAGE_NAME):$(TAG)
 
 # Directories
@@ -19,8 +19,8 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the generic Docker image
-	@echo "Building generic model-runner image..."
-	docker build -f Dockerfile.generic -t $(FULL_NAME) ..
+	@echo "Building generic model-runner image for amd64..."
+	docker build --platform linux/amd64 -f Dockerfile.generic -t $(FULL_NAME) ..
 
 run: ## Run the model-runner with example code (requires build first)
 	@echo "Running model-runner with example code..."
@@ -91,8 +91,8 @@ check-health: ## Check if the service is healthy
 
 build-all: ## Build both regular and GPU versions
 	@$(MAKE) build
-	@echo "Building GPU version..."
-	docker build -f Dockerfile.generic -t $(IMAGE_NAME):$(TAG)-gpu --build-arg BASE_IMAGE=nvidia/cuda:11.8-runtime-ubuntu20.04 ..
+	@echo "Building GPU version for amd64..."
+	docker build --platform linux/amd64 -f Dockerfile.generic -t $(IMAGE_NAME):$(TAG)-gpu --build-arg BASE_IMAGE=nvidia/cuda:11.8-runtime-ubuntu20.04 ..
 
 push: ## Push image to registry (set REGISTRY variable first)
 	@if [ -z "$(REGISTRY)" ]; then \
@@ -101,6 +101,14 @@ push: ## Push image to registry (set REGISTRY variable first)
 	fi
 	docker tag $(FULL_NAME) $(REGISTRY)/$(FULL_NAME)
 	docker push $(REGISTRY)/$(FULL_NAME)
+
+build-push: ## Build and push image in one step (amd64 only)
+	@if [ -z "$(REGISTRY)" ]; then \
+		echo "Error: Please set REGISTRY variable (e.g., make build-push REGISTRY=your-registry.com)"; \
+		exit 1; \
+	fi
+	@echo "Building and pushing amd64 image to $(REGISTRY)/$(FULL_NAME)..."
+	docker buildx build --platform linux/amd64 -f Dockerfile.generic -t $(REGISTRY)/$(FULL_NAME) --push ..
 
 # Usage examples
 usage: ## Show usage examples

@@ -1,7 +1,8 @@
 # Generic Model Runner Image
 ARG BASE_IMAGE=python:3.11-slim
+ARG TARGETPLATFORM=linux/amd64
 
-FROM $BASE_IMAGE
+FROM --platform=$TARGETPLATFORM $BASE_IMAGE
 
 # Install system dependencies that might be needed for ML packages
 RUN apt-get update && apt-get install -y \

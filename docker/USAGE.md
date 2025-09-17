@@ -30,8 +30,8 @@ docker-compose up model-runner
 ### Using Docker Run
 
 ```bash
-# Build the generic image
-docker build -f docker/Dockerfile.generic -t model-runner:generic .
+# Build the generic image (amd64 architecture)
+docker build --platform linux/amd64 -f docker/Dockerfile.generic -t model-runner:generic .
 
 # Run with volume mounts
 docker run -d \
@@ -85,6 +85,10 @@ docker-compose run -e LOG_LEVEL=DEBUG model-runner
 # Using docker run
 docker run -e LOG_LEVEL=DEBUG -e HAS_GPU=true model-runner:generic
 ```
+
+## Platform Architecture
+
+**Important**: This image is built specifically for **linux/amd64** architecture to ensure consistency across deployment environments. All build commands use `--platform linux/amd64` to guarantee compatibility regardless of the host machine architecture.
 
 ## Features
 

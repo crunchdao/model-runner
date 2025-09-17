@@ -5,6 +5,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.generic
+    platform: linux/amd64
     ports:
       - "50051:50051"
     volumes:
@@ -31,6 +32,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.generic
+    platform: linux/amd64
     ports:
       - "50052:50051"
     volumes:
