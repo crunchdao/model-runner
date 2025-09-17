@@ -33,7 +33,7 @@ install_requirements() {
 }
 
 # Check if code directory exists and is not empty
-if [ ! -d "$CODE_DIRECTORY" ] || [ -z "$(ls -A "$CODE_DIRECTORY" 2>/dev/null)" ]; then
+if [ ! -d "$CODE_DIRECTORY" ] || [ -z "$(find "$CODE_DIRECTORY" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
     echo "ERROR: Code directory is empty or doesn't exist: $CODE_DIRECTORY"
     echo "Please mount your code directory to $CODE_DIRECTORY"
     exit 1
