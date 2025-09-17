@@ -13,7 +13,7 @@ install_requirements() {
         echo "Found requirements.txt, checking if installation needed..."
         
         # Create a hash of requirements.txt for caching
-        REQUIREMENTS_HASH=$(md5sum "$REQUIREMENTS_FILE" 2>/dev/null | cut -d' ' -f1 || echo "no-hash")
+        REQUIREMENTS_HASH=$(md5sum "$REQUIREMENTS_FILE" 2>/dev/null | cut -d' ' -f1 || echo "no-requirements")
         CACHE_FILE="$CACHE_DIRECTORY/.requirements_cache_$REQUIREMENTS_HASH"
         
         if [ ! -f "$CACHE_FILE" ]; then
