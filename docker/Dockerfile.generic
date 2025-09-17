@@ -1,0 +1,57 @@
+# Generic Model Runner Image
+ARG BASE_IMAGE=python:3.11-slim
+
+FROM $BASE_IMAGE
+
+# Install system dependencies that might be needed for ML packages
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    gfortran \
+    libopenblas-dev \
+    liblapack-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure pip for NVIDIA and other ML repositories
+RUN echo "[global]" >> /etc/pip.conf && \
+    echo "no-cache-dir = true" >> /etc/pip.conf && \
+    echo "index-url = https://pypi.org/simple" >> /etc/pip.conf && \
+    echo "extra-index-url =" >> /etc/pip.conf && \
+    echo "    https://pypi.nvidia.com" >> /etc/pip.conf && \
+    echo "    https://pypi.ngc.nvidia.com" >> /etc/pip.conf && \
+    echo "trusted-host =" >> /etc/pip.conf && \
+    echo "    pypi.nvidia.com" >> /etc/pip.conf && \
+    echo "    pypi.ngc.nvidia.com" >> /etc/pip.conf
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Copy and install the model-runner package from source
+COPY . /tmp/model-runner-source
+RUN cd /tmp/model-runner-source && pip install . && rm -rf /tmp/model-runner-source
+
+# Create directories for mounting
+RUN mkdir -p /workspace/submission/code /workspace/resources /workspace/cache
+
+# Create entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Set working directory
+WORKDIR /app
+
+# Environment variables for configuration
+ENV CODE_DIRECTORY="/workspace/submission/code"
+ENV RESOURCE_DIRECTORY="/workspace/resources"  
+ENV REQUIREMENTS_FILE="/workspace/submission/code/requirements.txt"
+ENV CACHE_DIRECTORY="/workspace/cache"
+ENV HAS_GPU="false"
+ENV LOG_LEVEL="INFO"
+ENV SERVER_ADDRESS="[::]:50051"
+
+# Use custom entrypoint that handles dynamic requirements
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command arguments
+CMD ["model-runner"]
