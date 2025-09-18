@@ -2,7 +2,7 @@
 
 # Configuration
 IMAGE_NAME = crunch-dynamic-model-runner
-VERSION ?= 0.5.0
+VERSION ?= 0.5.3
 TAG = latest
 FULL_NAME = $(IMAGE_NAME):$(TAG)
 VERSIONED_NAME = $(IMAGE_NAME):$(VERSION)
