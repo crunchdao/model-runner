@@ -7,26 +7,12 @@ echo "Code Directory: $CODE_DIRECTORY"
 echo "Resource Directory: $RESOURCE_DIRECTORY"
 echo "Requirements File: $REQUIREMENTS_FILE"
 
-# Function to install requirements with caching
+# Function to install requirements 
 install_requirements() {
     if [ -f "$REQUIREMENTS_FILE" ]; then
-        echo "Found requirements.txt, checking if installation needed..."
-        
-        # Create a hash of requirements.txt for caching
-        REQUIREMENTS_HASH=$(md5sum "$REQUIREMENTS_FILE" 2>/dev/null | cut -d' ' -f1 || echo "no-requirements")
-        CACHE_FILE="$CACHE_DIRECTORY/.requirements_cache_$REQUIREMENTS_HASH"
-        
-        if [ ! -f "$CACHE_FILE" ]; then
-            echo "Installing requirements from $REQUIREMENTS_FILE..."
-            pip install --no-cache-dir -r "$REQUIREMENTS_FILE"
-            
-            # Create cache marker
-            mkdir -p "$CACHE_DIRECTORY"
-            touch "$CACHE_FILE"
-            echo "Requirements installed and cached."
-        else
-            echo "Requirements already installed (cached)."
-        fi
+        echo "Installing requirements from $REQUIREMENTS_FILE..."
+        pip install --no-cache-dir -r "$REQUIREMENTS_FILE"
+        echo "Requirements installed."
     else
         echo "No requirements.txt found, skipping dependency installation."
     fi
