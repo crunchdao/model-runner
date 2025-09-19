@@ -31,8 +31,8 @@ if [ ! -d "$RESOURCE_DIRECTORY" ]; then
     mkdir -p "$RESOURCE_DIRECTORY"
 fi
 
-# Install requirements if needed
-install_requirements
+# Skip requirements installation - they should be pre-installed during image build
+echo "Skipping requirements installation (should be pre-installed during image build)"
 
 # If the first argument is model-runner, pass all arguments to it
 if [ "$1" = "model-runner" ]; then
