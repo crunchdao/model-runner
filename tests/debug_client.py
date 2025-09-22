@@ -11,8 +11,8 @@ from model_runner.grpc.generated.dynamic_subclass_pb2 import SetupRequest, CallR
 
 from model_runner.utils.datatype_transformer import encode_data, decode_data
 
+SERVER_ADDRESS_PHALA = "d175dfa1b5cbb22438a52e2b6f1b5464c0294b36-%sg.dstack-pha-prod10.phala.network"
 SERVER_ADDRESS = "localhost:50051"
-
 
 # @pytest.mark.asyncio
 # async def test_grpc_streaming_from_user_input():
@@ -148,4 +148,14 @@ def test_health_call():
     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
         stub = health_pb2_grpc.HealthStub(channel)
         resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
+        assert resp.status == health_pb2.HealthCheckResponse.SERVING
+
+def test_health_call_phala():
+    with open("phala_gateway.crt", "rb") as f:
+        trusted_certs = f.read()
+
+    creds = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+    with grpc.secure_channel(SERVER_ADDRESS_PHALA % 5001, credentials=creds) as channel:
+        stub = health_pb2_grpc.HealthStub(channel)
+        resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=10.0)
         assert resp.status == health_pb2.HealthCheckResponse.SERVING
