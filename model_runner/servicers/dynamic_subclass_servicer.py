@@ -101,7 +101,7 @@ class DynamicSubclassServicer(dynamic_subclass_pb2_grpc.DynamicSubclassServiceSe
 
                 unused_parameters = [k for k in kwargs.keys() if k not in expected_kwargs.keys()]
                 if unused_parameters and unused_parameters not in self.reported_unused:
-                    logger.warning(f'The following parameters are not used: {', '.join(unused_parameters)}. You may consider utilizing them if relevant to your logic.')
+                    logger.warning(f"The following parameters are not used: {', '.join(unused_parameters)}. You may consider utilizing them if relevant to your logic.")
                     self.reported_unused.append(unused_parameters)
 
                 logger.debug('Call to method "%s" with positional arguments: %s, keyword arguments: %s', method_name, args, kwargs)
