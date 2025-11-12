@@ -33,6 +33,7 @@ def example_code_path():
     return os.path.dirname(__file__) + "/models_examples/bill"
 
 
+@pytest.mark.forked
 def test_setup_and_predict_success(grpc_context, example_code_path):
     print(f"model_directory: {example_code_path}")
 
