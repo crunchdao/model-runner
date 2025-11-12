@@ -45,7 +45,7 @@ def load_instance(code_path: str, base_class_name: str, *args, **kwargs):
                 logger.debug(f"Skipping {candidate} due to being in {base_package}.")
                 continue
 
-            if not issubclass(candidate, (base_class)) and candidate is not base_class:
+            if not issubclass(candidate, (base_class)):
                 logger.debug(f"Class {candidate} does not inherit from {base_class}.")
                 continue
 
