@@ -40,7 +40,6 @@ def load_instance(code_path: str, base_class_name: str, *args, **kwargs):
                 continue
 
             candidate_module_name = getattr(candidate, "__module__", "")
-            logger.warning(f"testing {candidate_module_name} {module} {base_package}.")
             if candidate_module_name == base_package or candidate_module_name.startswith(skip_if_module_prefix):
                 logger.debug(f"Skipping {candidate} due to being in {base_package}.")
                 continue
