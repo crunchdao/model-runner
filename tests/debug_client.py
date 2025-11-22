@@ -149,3 +149,38 @@ def test_health_call():
         stub = health_pb2_grpc.HealthStub(channel)
         resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
         assert resp.status == health_pb2.HealthCheckResponse.SERVING
+
+
+def test_grpc_message_size_limit():
+    with grpc.insecure_channel(SERVER_ADDRESS) as channel:
+        # ModelRunnerStub is class generate and abstract remote call
+        stub = DynamicSubclassServiceStub(channel)
+        stub.Setup(SetupRequest(className='birdgame.trackers.trackerbase.TrackerBase', instanceKwArguments=[KwArgument(keyword="horizon", data=Variant(type=VariantType.INT, value=encode_data(VariantType.INT, 1)))]))
+        print("Stepup complete.")
+
+        slightly_smaller_message = "a" * (63 * 1024 * 1024)  # Just under 64MB
+        payload = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1, 'msg_test': slightly_smaller_message}
+        payload_encoded = encode_data(VariantType.JSON, payload)
+        try:
+            stub.Call(CallRequest(
+                methodName='tick',
+                methodArguments=[
+                    Argument(position=1, data=Variant(type=VariantType.JSON, value=payload_encoded))
+                ])
+            )
+        except grpc.RpcError as e:
+            assert False, f"Request below limit failed unexpectedly with error: {e}"
+
+        try:
+            large_message = "a" * (64 * 1024 * 1024)
+            payload = {'falcon_location': 21.179864629354732, 'time': 230.96231205799998, 'dove_location': 19.164986723324326, 'falcon_id': 1, 'msg_test': large_message}
+            payload_encoded = encode_data(VariantType.JSON, payload)
+            stub.Call(CallRequest(
+                methodName='tick',
+                methodArguments=[
+                    Argument(position=1, data=Variant(type=VariantType.JSON, value=payload_encoded))
+                ])
+            )
+            assert False, "Request above limit succeeded unexpectedly"
+        except grpc.RpcError as e:
+            assert e.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
