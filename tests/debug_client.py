@@ -1,3 +1,5 @@
+import asyncio
+
 import grpc
 from google.protobuf import empty_pb2
 from grpc_health.v1 import health_pb2_grpc, health_pb2
@@ -144,6 +146,7 @@ def test_grpc_infer_bird_2():
         decoded_result = decode_data(prediction.methodResponse.value, prediction.methodResponse.type)
         print(f"result {decoded_result}")
 
+
 def test_health_call():
     with grpc.insecure_channel(SERVER_ADDRESS) as channel:
         stub = health_pb2_grpc.HealthStub(channel)
@@ -184,3 +187,55 @@ def test_grpc_message_size_limit():
             assert False, "Request above limit succeeded unexpectedly"
         except grpc.RpcError as e:
             assert e.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
+
+
+def test_secure_channel():
+
+    # python -m model_runner.server
+    # --secure
+    # --code-directory docker/submission/code
+    # --certificates-directory tests/certs/cruncher-nkxooffy
+    # --cruncher-wallet-pubkey GKgkFy6ewf1j2oFtjAs8KNjoZMzwUiEf8Qt3MJba2hdD
+    # --coordinator-wallet-pubkey 6a46qszZbLX6WCLoQb8nfwxQCYKj2yC4xXEBTwHKXy5u
+
+    import json
+    path = "certs/coordinator-npxhxkph/"
+    with open(f"{path}/ca.crt", "rb") as f:
+        ca_cert_for_servers = f.read()
+
+    with open(f"{path}/tls.crt", "rb") as f:
+        coord_cert = f.read()
+
+    with open(f"{path}/tls.key", "rb") as f:
+        coord_key = f.read()
+
+    client_creds = grpc.ssl_channel_credentials(
+        root_certificates=ca_cert_for_servers,  # trust runner CA / cert
+        private_key=coord_key,  # coordinator private key
+        certificate_chain=coord_cert,  # coordinator cert
+    )
+    with open(f"{path}/coordinator_msg.json", "r") as f:
+        msg = json.load(f)
+
+    metadata = (
+        ("x-auth-message", msg["message_b64"]),
+        ("x-auth-signature", msg["signature_b64"]),
+        ("x-auth-wallet-pubkey", msg["wallet_pubkey_b58"]),
+    )
+    options = (("grpc.ssl_target_name_override", "cruncher-nkxooffy"),)
+
+    with grpc.secure_channel(SERVER_ADDRESS, credentials=client_creds, options=options) as channel:
+        stub = health_pb2_grpc.HealthStub(channel)
+
+        resp, call = stub.Check.with_call(  # returns UnaryUnaryCall
+            health_pb2.HealthCheckRequest(service=""),
+            timeout=0.5,
+            metadata=metadata
+        )
+        initial_md = dict(call.initial_metadata())
+
+        assert "x-server-auth-message" in initial_md
+        assert "x-server-auth-signature" in initial_md
+        assert "x-server-wallet-pubkey" in initial_md
+
+        assert resp.status == health_pb2.HealthCheckResponse.SERVING
