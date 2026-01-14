@@ -71,7 +71,8 @@ def verify_wallet_delegation(
     wallet_pub_b58: str,
     expected_wallet_pub_b58: str,
     tls_pub: bytes,
-    model_id:str|None = None
+    expected_hotkey: str,
+    expected_model_id: str | None = None  # only used for cruncher part
 ) -> DelegationInfo:
     """
     Generic verification logic, independent of gRPC.
@@ -121,8 +122,12 @@ def verify_wallet_delegation(
         raise AuthError("TLS client key does not match wallet-authorized cert_pub")
 
     model_id = payload.get("model_id")
-    if model_id is not None and model_id != model_id:
+    if model_id != expected_model_id:
         raise AuthError("model_id in payload does not match the expected model_id")
+
+    hotkey = payload.get("hotkey")
+    if hotkey != expected_hotkey:
+        raise AuthError("hotkey in payload does not match the expected hotkey")
 
     expires_raw = payload.get("expires_at")
     expires_at = int(expires_raw) if expires_raw is not None else None

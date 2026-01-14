@@ -32,7 +32,8 @@ def extract_client_transport_pub_from_tls(context: grpc.ServicerContext) -> byte
 
 
 class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
-    def __init__(self, wallet_pub_b58: str, protected_prefix: str = ""):
+    def __init__(self, wallet_pub_b58: str, hotkey: str, protected_prefix: str = ""):
+        self._hotkey = hotkey
         self._wallet_pub_b58 = wallet_pub_b58
         self._protected_prefix = protected_prefix
 
@@ -77,10 +78,10 @@ class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
                     wallet_pub_b58=wallet_pubkey_b58,
                     expected_wallet_pub_b58=self._wallet_pub_b58,
                     tls_pub=tls_client_pub,
+                    expected_hotkey=self._hotkey,
                 )
             except AuthError as e:
                 context.abort(grpc.StatusCode.UNAUTHENTICATED, str(e))
-
 
             return original_unary_unary(request, context)
 

@@ -80,16 +80,18 @@ def cli(
         message_b64 = signed_message.get("message_b64")
         signature_b64 = signed_message.get("signature_b64")
         wallet_pubkey_b58 = signed_message.get("wallet_pubkey_b58")
-        model_id = signed_message.get("model_id")
         tls_pub = load_pubkey_from_pem_cert(server_cert)
 
         # raise AuthError
-        verify_wallet_delegation(message_b64=message_b64,
-                                 signature_b64=signature_b64,
-                                 wallet_pub_b58=wallet_pubkey_b58,
-                                 expected_wallet_pub_b58=cruncher_wallet_pubkey,
-                                 tls_pub=tls_pub,
-                                 model_id=model_id)
+        verify_wallet_delegation(
+            message_b64=message_b64,
+            signature_b64=signature_b64,
+            wallet_pub_b58=wallet_pubkey_b58,
+            expected_wallet_pub_b58=cruncher_wallet_pubkey,
+            tls_pub=tls_pub,
+            expected_model_id=model_id,
+            expected_hotkey=cruncher_hotkey
+        )
 
         server_headers = build_server_headers(message_b64, signature_b64, wallet_pubkey_b58)
 
@@ -101,7 +103,7 @@ def cli(
             ('grpc.max_send_message_length', max_send_message_length),
             ('grpc.max_receive_message_length', max_receive_message_length)
         ],
-        interceptors=[WalletTlsAuthInterceptor(coordinator_wallet_pubkey), ServerIdentityInterceptor(server_headers)] if secure else []
+        interceptors=[WalletTlsAuthInterceptor(coordinator_wallet_pubkey, coordinator_hotkey), ServerIdentityInterceptor(server_headers)] if secure else []
     )
 
     health_servicer = health.HealthServicer(
