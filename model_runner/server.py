@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s - %(message)s")
 
 
 @click.command()
-@click.option('--secure', is_flag=True, help='Enable secure communication using mTLS and wallet signature verification')
+@click.option('--secure', is_flag=True, envvar="SECURE", help='Enable secure communication using mTLS and wallet signature verification')
 @click.option('--address', default='[::]:50051', envvar='GRPC_ADDRESS', help='IP + Port of server GRPC.')
 @click.option('--code-directory', type=click.Path(exists=True, file_okay=False), envvar='CODE_DIRECTORY', default='/workspace/submission/code')
 @click.option('--resource-directory', type=click.Path(file_okay=False), envvar='RESOURCE_DIRECTORY', default='/workspace/resources')
@@ -31,9 +31,12 @@ logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s - %(message)s")
 @click.option('--max-send-message-length', type=int, envvar='GRPC_MAX_SEND_MESSAGE_LENGTH', default=64 * 1024 * 1024, help='Maximum send message length in bytes for gRPC server')
 @click.option('--max-receive-message-length', type=int, envvar='GRPC_MAX_RECEIVE_MESSAGE_LENGTH', default=64 * 1024 * 1024, help='Maximum receive message length in bytes for gRPC server')
 @click.option('--model-id', envvar='MODEL_ID', help='Identifier for the model.')
-@click.option('--crunch-address', envvar='CRUNCH_ADDRESS', help='Address of the crunch on Solana')
-@click.option('--cruncher-wallet-pubkey', envvar='CRUNCHER_WALLET_PUBKEY', help='Cruncher wallet public key.')  # could be fetched from Solana later with crunch-address + model-id
-@click.option('--coordinator-wallet-pubkey', envvar='COORDINATOR_WALLET_PUBKEY', help='Coordinator wallet public key.')  # could be fetched from Solana later with crunch-address + model-id
+# could be fetched from Solana later with crunch-address + model-id
+@click.option('--crunch-onchain-address', envvar='CRUNCH_ONCHAIN_ADDRESS', help='Address of the crunch on Solana')
+@click.option('--cruncher-wallet-pubkey', envvar='CRUNCHER_WALLET_PUBKEY', help='Cruncher wallet public key.')
+@click.option('--cruncher-hotkey', envvar='CRUNCHER_HOTKEY', help='Cruncher wallet public key.')
+@click.option('--coordinator-wallet-pubkey', envvar='COORDINATOR_WALLET_PUBKEY', help='Coordinator wallet public key.')
+@click.option('--coordinator-hotkey', envvar='COORDINATOR_HOTKEY', help='Coordinator onchain hotkey.')
 def cli(
     secure: bool,
     address: str,
@@ -46,9 +49,11 @@ def cli(
     max_send_message_length: int,
     max_receive_message_length: int,
     model_id: str,
-    crunch_address: str,
+    crunch_onchain_address: str,
+    cruncher_hotkey: str,
     cruncher_wallet_pubkey: str,
     coordinator_wallet_pubkey: str,
+    coordinator_hotkey: str,
 ):
     """Program giving access remotely to model via RPC"""
 
