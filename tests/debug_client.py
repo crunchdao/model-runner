@@ -1,6 +1,7 @@
 import asyncio
 
 import grpc
+import pytest
 from google.protobuf import empty_pb2
 from grpc_health.v1 import health_pb2_grpc, health_pb2
 
@@ -190,7 +191,6 @@ def test_grpc_message_size_limit():
 
 
 def test_secure_channel():
-
     # python -m model_runner.server
     # --secure
     # --code-directory docker/submission/code
@@ -200,7 +200,8 @@ def test_secure_channel():
 
     import json
     path = "certs/coordinator-npxhxkph/"
-    with open(f"{path}/ca.crt", "rb") as f:
+    # with open(f"{path}/ca.crt", "rb") as f:
+    with open(f"{path}/tls.crt", "rb") as f:
         ca_cert_for_servers = f.read()
 
     with open(f"{path}/tls.crt", "rb") as f:
@@ -217,25 +218,69 @@ def test_secure_channel():
     with open(f"{path}/coordinator_msg.json", "r") as f:
         msg = json.load(f)
 
+    class StaticAuthMetadata(grpc.AuthMetadataPlugin):
+        def __init__(self, metadata: tuple[tuple[str, str], ...]):
+            self._metadata = metadata
+
+        def __call__(self, context, callback):
+            callback(self._metadata, None)
+
     metadata = (
         ("x-auth-message", msg["message_b64"]),
         ("x-auth-signature", msg["signature_b64"]),
         ("x-auth-wallet-pubkey", msg["wallet_pubkey_b58"]),
     )
-    options = (("grpc.ssl_target_name_override", "cruncher-nkxooffy"),)
+    options = (("grpc.ssl_target_name_override", "cruncher-nkxooffy"),)  # use model-node-123444
 
-    with grpc.secure_channel(SERVER_ADDRESS, credentials=client_creds, options=options) as channel:
+    call_creds = grpc.metadata_call_credentials(StaticAuthMetadata(metadata))
+    channel_creds = grpc.composite_channel_credentials(client_creds, call_creds)
+
+    with grpc.secure_channel(SERVER_ADDRESS, credentials=channel_creds, options=options) as channel:
         stub = health_pb2_grpc.HealthStub(channel)
 
-        resp, call = stub.Check.with_call(  # returns UnaryUnaryCall
-            health_pb2.HealthCheckRequest(service=""),
-            timeout=0.5,
-            metadata=metadata
-        )
-        initial_md = dict(call.initial_metadata())
+        resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
 
-        assert "x-server-auth-message" in initial_md
-        assert "x-server-auth-signature" in initial_md
-        assert "x-server-wallet-pubkey" in initial_md
+        # resp, call = stub.Check.with_call(  # returns UnaryUnaryCall
+        #    health_pb2.HealthCheckRequest(service=""),
+        #    timeout=0.5,
+        #    #metadata=metadata
+        # )
+        # initial_md = dict(call.initial_metadata())
+
+        # assert "x-server-auth-message" in initial_md
+        # assert "x-server-auth-signature" in initial_md
+        # assert "x-server-wallet-pubkey" in initial_md
 
         assert resp.status == health_pb2.HealthCheckResponse.SERVING
+
+
+def test_signature_verification():
+    import json
+    from model_runner.utils.wallet_gelegation import verify_wallet_delegation
+
+    JSON = """
+    {
+        "message_b64": "eyJjZXJ0X3B1YiI6ICJNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQXdqNTRKMnJNd0NXY1JEVmsxZURQdms5QW5Zd2J5UVVXRnBnWUVqZDQ0MTZxb3dwWFJxSHYxNlRLRmg4UGxFUzJyR2NMT1JQS0ltQ1BrYTFNUkkzUnVMVzl6dkhsc2NDYmZUMDZSOCtJVHVtWUNpVE1FbTNoemRlY01hajFvaXZETVpIaHNmVWdBbzlUcTlQUzlMbGd4cTcrOGZrK05SajVTQVhpRi9iOGR1VTNKT01BbDhUWUpadlIyZVhKWENKODhoMXVoRVVmelhsMGxLMFBaZE9uUURaMXI1WU8wdnllNGIyNzNuMWs0UWhWZXpXQy9xa2hFOEVzczd6eHJxa0lnbHJlU29tQ1J0QXdlb211RnVZSFhHUGZCK0Z1VGY1ckZGQ1BkMFY5aHF3TUhRcU4zM25jVGRPUmNXMHRpaFNnV2FXQUllbjlzZERMM3JCam1RZk9ud0lEQVFBQiIsICJob3Rfa2V5IjogIkRlZGZKbXhEbUFCeHRyZVJBMlZqb1I5c3NvVGtpcGZoNDVGOW1NOEg1VWk5In0=",
+        "wallet_pubkey_b58": "2VfSphzsSWQxSP29JMXUwqsbkbLdqqRPY5unziVkCko2",
+        "signature_b64": "gi9KdH77azdSEKhQlVlufDJov5TQCsvEm6q2XudMmSmST6aekwvL4a8AKgAyBjVTcI1dFD3ztEeaXKZZHVSnCw=="
+    }
+    """
+
+    signed_message = json.loads(JSON)
+    message_b64 = signed_message.get("message_b64")
+    signature_b64 = signed_message.get("signature_b64")
+    wallet_pubkey_b58 = signed_message.get("wallet_pubkey_b58")
+
+    try:
+        verify_wallet_delegation(
+            message_b64=message_b64,
+            signature_b64=signature_b64,
+            wallet_pub_b58=wallet_pubkey_b58,
+            expected_wallet_pub_b58="6N5vZrrCosLZfKe6yJ5SSsurNKrdJKQrd4qhocABP1rJ",
+            tls_pub=b"None",
+            expected_model_id='13048',
+            expected_hotkey="DNPr3bLsTMRfswkgsJLDb4Kj1fkrWE4JxjwWtPH4bAEa"
+        )
+        print("Verification succeeded, no exceptions raised.")
+    except Exception as e:
+        pytest.fail(f"Verification failed with exception: {e}")

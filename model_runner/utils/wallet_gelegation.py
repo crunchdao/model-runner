@@ -96,7 +96,7 @@ def verify_wallet_delegation(
 
     # 2) Wallet pubkey check (bind delegation to a specific wallet)
     if wallet_pub_b58 != expected_wallet_pub_b58:
-        raise AuthError("Wallet pubkey does not match expected crunch wallet")
+        raise AuthError("The provided wallet public key does not match the expected public key.")
 
     # 3) Check signature
     if not wallet_verify(wallet_pub_bytes, message_bytes, signature):
