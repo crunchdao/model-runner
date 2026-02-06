@@ -46,7 +46,7 @@ class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
     @staticmethod
     def _hash_tls_pubkey(tls_pub: bytes) -> str:
         """Hash the TLS public key using SHA256."""
-        return hashlib.sha256(tls_pub).digest()
+        return hashlib.sha256(tls_pub).hexdigest()
 
     def _verify_tls_cert_hash(self, tls_pub: bytes, context: grpc.ServicerContext) -> None:
         """Verify that the TLS client cert hash matches the registered cert hashes."""
