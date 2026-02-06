@@ -52,11 +52,11 @@ class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
         """Verify that the TLS client cert hash matches the registered cert hashes."""
         tls_pub_hash = self._hash_tls_pubkey(tls_pub)
 
-        #if tls_pub_hash != self._coordinator_cert_hash and tls_pub_hash != self._coordinator_cert_hash_secondary:
-        context.abort(
-            grpc.StatusCode.UNAUTHENTICATED,
-            "TLS certificate hash does not match registered certificate",
-        )
+        if tls_pub_hash != self._coordinator_cert_hash and tls_pub_hash != self._coordinator_cert_hash_secondary:
+            context.abort(
+                grpc.StatusCode.UNAUTHENTICATED,
+                "TLS certificate hash does not match registered certificate",
+            )
 
     def intercept_service(self, continuation, handler_call_details):
         handler = continuation(handler_call_details)
