@@ -1,8 +1,9 @@
+import hashlib
+from typing import Optional
+
 import grpc
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
-from model_runner.utils.wallet_gelegation import verify_wallet_delegation, AuthError
 
 
 def extract_client_transport_pub_from_tls(context: grpc.ServicerContext) -> bytes:
@@ -32,10 +33,30 @@ def extract_client_transport_pub_from_tls(context: grpc.ServicerContext) -> byte
 
 
 class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
-    def __init__(self, wallet_pub_b58: str, hotkey: str, protected_prefix: str = ""):
-        self._hotkey = hotkey
-        self._wallet_pub_b58 = wallet_pub_b58
+    def __init__(
+        self,
+        coordinator_cert_hash: str,
+        coordinator_cert_hash_secondary: Optional[str] = None,
+        protected_prefix: str = "",
+    ):
+        self._coordinator_cert_hash = coordinator_cert_hash
+        self._coordinator_cert_hash_secondary = coordinator_cert_hash_secondary
         self._protected_prefix = protected_prefix
+
+    @staticmethod
+    def _hash_tls_pubkey(tls_pub: bytes) -> str:
+        """Hash the TLS public key using SHA256."""
+        return hashlib.sha256(tls_pub).digest()
+
+    def _verify_tls_cert_hash(self, tls_pub: bytes, context: grpc.ServicerContext) -> None:
+        """Verify that the TLS client cert hash matches the registered cert hashes."""
+        tls_pub_hash = self._hash_tls_pubkey(tls_pub)
+
+        #if tls_pub_hash != self._coordinator_cert_hash and tls_pub_hash != self._coordinator_cert_hash_secondary:
+        context.abort(
+            grpc.StatusCode.UNAUTHENTICATED,
+            "TLS certificate hash does not match registered certificate",
+        )
 
     def intercept_service(self, continuation, handler_call_details):
         handler = continuation(handler_call_details)
@@ -52,36 +73,14 @@ class WalletTlsAuthInterceptor(grpc.ServerInterceptor):
         original_unary_unary = handler.unary_unary
 
         def new_unary_unary(request, context: grpc.ServicerContext):
-            # 1) Extract metadata
-            md = {k: v for k, v in context.invocation_metadata()}
-            message_b64 = md.get("x-auth-message")
-            signature_b64 = md.get("x-auth-signature")
-            wallet_pubkey_b58 = md.get("x-auth-wallet-pubkey")
-
-            if not message_b64 or not signature_b64 or not wallet_pubkey_b58:
-                context.abort(
-                    grpc.StatusCode.UNAUTHENTICATED,
-                    "Missing auth metadata (x-auth-message/signature/wallet-pubkey)",
-                )
-
-            # 2) Extract TLS client pubkey from mTLS
+            # 1) Extract TLS client pubkey from mTLS
             try:
                 tls_client_pub = extract_client_transport_pub_from_tls(context)
             except grpc.RpcError:
                 raise  # already aborted
 
-            # 3) Call generic verifier
-            try:
-                delegation = verify_wallet_delegation(
-                    message_b64=message_b64,
-                    signature_b64=signature_b64,
-                    wallet_pub_b58=wallet_pubkey_b58,
-                    expected_wallet_pub_b58=self._wallet_pub_b58,
-                    tls_pub=tls_client_pub,
-                    expected_hotkey=self._hotkey,
-                )
-            except AuthError as e:
-                context.abort(grpc.StatusCode.UNAUTHENTICATED, str(e))
+            # 2) Verify TLS cert hash matches registered coordinator cert
+            self._verify_tls_cert_hash(tls_client_pub, context)
 
             return original_unary_unary(request, context)
 

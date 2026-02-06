@@ -36,7 +36,8 @@ logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s - %(message)s")
 @click.option('--cruncher-wallet-pubkey', envvar='CRUNCHER_WALLET_PUBKEY', help='Cruncher wallet public key.')
 @click.option('--cruncher-hotkey', envvar='CRUNCHER_HOTKEY', help='Cruncher wallet public key.')
 @click.option('--coordinator-wallet-pubkey', envvar='COORDINATOR_WALLET_PUBKEY', help='Coordinator wallet public key.')
-@click.option('--coordinator-hotkey', envvar='COORDINATOR_HOTKEY', help='Coordinator onchain hotkey.')
+@click.option('--coordinator-cert-hash', envvar='COORDINATOR_CERT_HASH', help='Expected SHA256 hash of coordinator TLS certificate public key.')
+@click.option('--coordinator-cert-hash-secondary', envvar='COORDINATOR_CERT_HASH_SECONDARY', default=None, help='Secondary expected SHA256 hash of coordinator TLS certificate public key (optional).')
 def cli(
     secure: bool,
     address: str,
@@ -53,7 +54,8 @@ def cli(
     cruncher_hotkey: str,
     cruncher_wallet_pubkey: str,
     coordinator_wallet_pubkey: str,
-    coordinator_hotkey: str,
+    coordinator_cert_hash: str,
+    coordinator_cert_hash_secondary: str,
 ):
     """Program giving access remotely to model via RPC"""
 
@@ -103,7 +105,13 @@ def cli(
             ('grpc.max_send_message_length', max_send_message_length),
             ('grpc.max_receive_message_length', max_receive_message_length)
         ],
-        interceptors=[WalletTlsAuthInterceptor(coordinator_wallet_pubkey, coordinator_hotkey), ServerIdentityInterceptor(server_headers)] if secure else []
+        interceptors=[
+            WalletTlsAuthInterceptor(
+                coordinator_cert_hash=coordinator_cert_hash,
+                coordinator_cert_hash_secondary=coordinator_cert_hash_secondary,
+            ),
+            ServerIdentityInterceptor(server_headers),
+        ] if secure else []
     )
 
     health_servicer = health.HealthServicer(

@@ -1,4 +1,5 @@
 import asyncio
+from time import sleep
 
 import grpc
 import pytest
@@ -199,9 +200,9 @@ def test_secure_channel():
     # --coordinator-wallet-pubkey 6a46qszZbLX6WCLoQb8nfwxQCYKj2yC4xXEBTwHKXy5u
 
     import json
-    path = "certs/coordinator-npxhxkph/"
+    path = "tests/certs/coordinator-npxhxkph/"
     # with open(f"{path}/ca.crt", "rb") as f:
-    with open(f"{path}/tls.crt", "rb") as f:
+    with open(f"{path}/ca.crt", "rb") as f:
         ca_cert_for_servers = f.read()
 
     with open(f"{path}/tls.crt", "rb") as f:
@@ -215,43 +216,15 @@ def test_secure_channel():
         private_key=coord_key,  # coordinator private key
         certificate_chain=coord_cert,  # coordinator cert
     )
-    with open(f"{path}/coordinator_msg.json", "r") as f:
-        msg = json.load(f)
 
-    class StaticAuthMetadata(grpc.AuthMetadataPlugin):
-        def __init__(self, metadata: tuple[tuple[str, str], ...]):
-            self._metadata = metadata
+    options = (("grpc.default_authority", "model-node-13367.crunchdao.internal"),("grpc.ssl_target_name_override", "model-node-13367.crunchdao.internal"))
 
-        def __call__(self, context, callback):
-            callback(self._metadata, None)
-
-    metadata = (
-        ("x-auth-message", msg["message_b64"]),
-        ("x-auth-signature", msg["signature_b64"]),
-        ("x-auth-wallet-pubkey", msg["wallet_pubkey_b58"]),
-    )
-    options = (("grpc.ssl_target_name_override", "cruncher-nkxooffy"),)  # use model-node-123444
-
-    call_creds = grpc.metadata_call_credentials(StaticAuthMetadata(metadata))
-    channel_creds = grpc.composite_channel_credentials(client_creds, call_creds)
-
-    with grpc.secure_channel(SERVER_ADDRESS, credentials=channel_creds, options=options) as channel:
+    with grpc.secure_channel(SERVER_ADDRESS, credentials=client_creds, options=options) as channel:
+        grpc.channel_ready_future(channel).result(timeout=5)
         stub = health_pb2_grpc.HealthStub(channel)
-
         resp = stub.Check(health_pb2.HealthCheckRequest(service=""), timeout=0.5)
-
-        # resp, call = stub.Check.with_call(  # returns UnaryUnaryCall
-        #    health_pb2.HealthCheckRequest(service=""),
-        #    timeout=0.5,
-        #    #metadata=metadata
-        # )
-        # initial_md = dict(call.initial_metadata())
-
-        # assert "x-server-auth-message" in initial_md
-        # assert "x-server-auth-signature" in initial_md
-        # assert "x-server-wallet-pubkey" in initial_md
-
         assert resp.status == health_pb2.HealthCheckResponse.SERVING
+
 
 
 def test_signature_verification():
