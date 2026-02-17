@@ -4,6 +4,7 @@ import base64
 from model_runner.grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
 from model_runner.servicers.train_infer_servicer import TrainInferStreamServicer
 from model_runner.servicers.dynamic_subclass_servicer import DynamicSubclassServicer
+from model_runner.security.gateway_auth_interceptor import GatewayAuthServerInterceptor
 import click
 import os
 
@@ -24,7 +25,20 @@ import model_runner.dstack
 @click.option('--loglevel', default='INFO', envvar='LOG_LEVEL', help='Logging level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)')
 def serve(address, secure_address, code_directory, resource_directory, has_gpu, main_file, loglevel):
     """Program giving access remotely to model via RPC"""
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    interceptors = []
+
+    # Gateway auth: if a coordinator wallet is provided, verify signed tokens
+    # against on-chain cert hashes (fetched from cpi.crunchdao.io/certificates)
+    coordinator_wallet = os.getenv('GATEWAY_AUTH_COORDINATOR_WALLET')
+    if coordinator_wallet:
+        logger.info('Gateway auth enabled: verifying signatures against on-chain certs for wallet %s', coordinator_wallet)
+        interceptors.append(
+            GatewayAuthServerInterceptor(
+                coordinator_wallet=coordinator_wallet,
+            )
+        )
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1), interceptors=interceptors)
     train_infer_pb2_grpc.add_TrainInferStreamServiceServicer_to_server(
         TrainInferStreamServicer(
             code_directory=code_directory,
