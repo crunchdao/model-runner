@@ -1,4 +1,5 @@
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import click
@@ -7,6 +8,7 @@ import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
 from .grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
+from .security.gateway_auth_interceptor import GatewayAuthServerInterceptor
 from .servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 from .servicers.train_infer_servicer import TrainInferStreamServicer
 
@@ -35,10 +37,24 @@ def cli(
 
     logger.setLevel(logging.getLevelName(log_level.upper()))
 
+    interceptors = []
+
+    # Gateway auth: if a coordinator wallet is provided, verify signed tokens
+    # against on-chain cert hashes (fetched from cpi.crunchdao.io/certificates)
+    coordinator_wallet = os.getenv('GATEWAY_AUTH_COORDINATOR_WALLET')
+    if coordinator_wallet:
+        logger.info('Gateway auth enabled: verifying signatures against on-chain certs for wallet %s', coordinator_wallet)
+        interceptors.append(
+            GatewayAuthServerInterceptor(
+                coordinator_wallet=coordinator_wallet,
+            )
+        )
+
     # Use at least 2 workers to ensure Health checks are always responsive,
     # since the other service methods are restricted to one concurrent call
     server = grpc.server(
         ThreadPoolExecutor(max_workers=2),
+        interceptors=interceptors,
         options=[
             ('grpc.max_send_message_length', max_send_message_length),
             ('grpc.max_receive_message_length', max_receive_message_length)
