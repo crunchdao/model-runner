@@ -8,7 +8,6 @@ import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
 from .grpc.generated import dynamic_subclass_pb2_grpc, train_infer_pb2_grpc
-from .security.gateway_auth_interceptor import GatewayAuthServerInterceptor
 from .servicers.dynamic_subclass_servicer import DynamicSubclassServicer
 from .servicers.train_infer_servicer import TrainInferStreamServicer
 
@@ -43,6 +42,7 @@ def cli(
     # against on-chain cert hashes (fetched from cpi.crunchdao.io/certificates)
     coordinator_wallet = os.getenv('GATEWAY_AUTH_COORDINATOR_WALLET')
     if coordinator_wallet:
+        from .security.gateway_auth_interceptor import GatewayAuthServerInterceptor
         logger.info('Gateway auth enabled: verifying signatures against on-chain certs for wallet %s', coordinator_wallet)
         interceptors.append(
             GatewayAuthServerInterceptor(

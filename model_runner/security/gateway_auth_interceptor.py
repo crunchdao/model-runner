@@ -95,6 +95,11 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
                 "Using %d pre-seeded cert hash(es) from GATEWAY_AUTH_CERT_HASHES",
                 len(self._cert_hashes),
             )
+            logger.warning(
+                "Pre-seeded cert hashes will NEVER be refreshed at runtime. "
+                "To revoke or rotate keys, the container must be redeployed "
+                "with updated GATEWAY_AUTH_CERT_HASHES."
+            )
         else:
             if not os.environ.get("CPI_HOSTNAME"):
                 raise RuntimeError(
@@ -139,6 +144,7 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
                     logger.warning(
                         "Failed to refresh cert hashes, using cached values"
                     )
+                    self._cert_hashes_fetched_at = now  # back off until next TTL
                 else:
                     raise
 
