@@ -4,8 +4,8 @@ Server-side gateway auth: verify signed tokens from gRPC metadata.
 Verification chain:
   1. Client sends: signed payload + signature + DER public key
   2. Server computes SHA-256(public_key_der)
-  3. Server checks the hash matches on-chain cert hashes for the
-     coordinator's wallet (fetched via CPI_HOSTNAME/certificates)
+  3. Server checks the hash matches allowed cert hashes (read from
+     a host-mounted file kept fresh by the cert poller)
   4. Server verifies the signature against the presented public key
   5. Server checks timestamp freshness
 
@@ -20,10 +20,7 @@ import base64
 import hashlib
 import json
 import logging
-import os
 import time
-
-import requests
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -37,66 +34,8 @@ AUTH_SIGNATURE_KEY = "x-gateway-auth-signature"
 AUTH_PUBKEY_KEY = "x-gateway-auth-pubkey"
 
 
-def _get_cpi_hostname() -> str:
-    """Read CPI_HOSTNAME at call time so env changes are picked up."""
-    hostname = os.environ.get("CPI_HOSTNAME")
-    if not hostname:
-        raise GatewayAuthError("CPI_HOSTNAME environment variable is not set")
-    return hostname
-
-
 class GatewayAuthError(Exception):
     """Raised when gateway auth verification fails."""
-
-
-# ---------------------------------------------------------------------------
-# On-chain cert hash lookup
-# ---------------------------------------------------------------------------
-
-def fetch_cert_hashes(coordinator_wallet: str, timeout: float = 5) -> set[str]:
-    """
-    Fetch the on-chain cert hashes for a coordinator wallet.
-
-    Returns a set of hex-encoded SHA-256 hashes (primary + secondary).
-    """
-    hostname = _get_cpi_hostname()
-
-    try:
-        resp = requests.get(
-            f"https://{hostname}/certificates",
-            params={"wallet": coordinator_wallet},
-            timeout=timeout,
-        )
-    except requests.exceptions.RequestException as e:
-        raise GatewayAuthError(
-            f"Network error fetching cert hashes for wallet {coordinator_wallet}: {e}"
-        ) from e
-
-    if resp.status_code != 200:
-        raise GatewayAuthError(
-            f"Certificate service returned HTTP {resp.status_code} "
-            f"for wallet {coordinator_wallet}"
-        )
-
-    try:
-        data = resp.json()
-    except ValueError as e:
-        raise GatewayAuthError(
-            f"Invalid JSON from certificate service for wallet {coordinator_wallet}: {e}"
-        ) from e
-
-    hashes_set = set()
-    for key in ("certHash", "certHashSecondary"):
-        h = data.get(key)
-        if h and h != "0" * 64:  # skip zero hashes (empty slots)
-            hashes_set.add(h.lower())
-
-    if not hashes_set:
-        raise GatewayAuthError(
-            f"No certificate hashes registered on-chain for wallet {coordinator_wallet}"
-        )
-
-    return hashes_set
 
 
 def compute_pubkey_hash(pubkey_der: bytes) -> str:
