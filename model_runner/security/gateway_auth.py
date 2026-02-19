@@ -152,6 +152,10 @@ def verify_gateway_auth(
 
     # Check cert hash against on-chain registry
     presented_hash = compute_pubkey_hash(pubkey_der)
+    logger.debug(
+        "Gateway auth: pubkey_der=%d bytes, hash=%s, allowed=%s",
+        len(pubkey_der), presented_hash, allowed_cert_hashes,
+    )
     if presented_hash not in allowed_cert_hashes:
         raise GatewayAuthError(
             f"Public key hash {presented_hash} not found in on-chain cert hashes"
