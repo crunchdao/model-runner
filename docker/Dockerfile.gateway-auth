@@ -1,0 +1,6 @@
+FROM borisndocker/crunch-dynamic-model-runner:0.5.5-vanta
+
+COPY dist/crunch_model_runner-0.4.2-py3-none-any.whl /tmp/
+RUN pip install --no-cache-dir --no-deps /tmp/crunch_model_runner-0.4.2-py3-none-any.whl \
+    && pip install --no-cache-dir cryptography requests \
+    && rm /tmp/*.whl

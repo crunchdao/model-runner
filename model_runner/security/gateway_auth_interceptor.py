@@ -50,11 +50,11 @@ class _AbortHandler(grpc.RpcMethodHandler):
         self.response_streaming = False
         self.request_deserializer = None
         self.response_serializer = None
-        self.unary_unary = None
-        self.unary_stream = None
+        self._details = details
+        self.unary_unary = self._abort
+        self.unary_stream = self._abort
         self.stream_unary = None
         self.stream_stream = None
-        self._details = details
 
     def _abort(self, request, context):
         context.abort(grpc.StatusCode.UNAUTHENTICATED, self._details)
@@ -85,11 +85,24 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
         cache_ttl_seconds: int = 300,
         skip_methods: set[str] | None = None,
     ):
-        if not os.environ.get("CPI_HOSTNAME"):
-            raise RuntimeError(
-                "CPI_HOSTNAME environment variable must be set when "
-                "gateway auth is enabled"
+        # GATEWAY_AUTH_CERT_HASHES allows pre-seeding cert hashes (comma-separated hex)
+        # so containers without network access don't need to fetch from CPI.
+        pre_seeded = os.environ.get("GATEWAY_AUTH_CERT_HASHES", "")
+        if pre_seeded:
+            self._cert_hashes = {h.strip().lower() for h in pre_seeded.split(",") if h.strip()}
+            self._cert_hashes_fetched_at = float("inf")  # never refresh
+            logger.info(
+                "Using %d pre-seeded cert hash(es) from GATEWAY_AUTH_CERT_HASHES",
+                len(self._cert_hashes),
             )
+        else:
+            if not os.environ.get("CPI_HOSTNAME"):
+                raise RuntimeError(
+                    "CPI_HOSTNAME or GATEWAY_AUTH_CERT_HASHES environment variable "
+                    "must be set when gateway auth is enabled"
+                )
+            self._cert_hashes = set()
+            self._cert_hashes_fetched_at = 0
 
         self.coordinator_wallet = coordinator_wallet
         self.max_age_seconds = max_age_seconds
@@ -99,8 +112,6 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
             "/grpc.health.v1.Health/Watch",
         }
 
-        self._cert_hashes: set[str] = set()
-        self._cert_hashes_fetched_at: float = 0
         self._lock = threading.Lock()
 
     def _get_cert_hashes(self) -> set[str]:
