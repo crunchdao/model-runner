@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 import time
 
@@ -160,10 +159,11 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
                     len(self._cert_hashes),
                     self.cert_file,
                 )
-            except GatewayAuthError:
+            except Exception:
                 if self._cert_hashes:
                     logger.warning(
-                        "Failed to re-read cert file, using cached values"
+                        "Failed to re-read cert file, using cached values",
+                        exc_info=True,
                     )
                     self._cert_hashes_read_at = now  # back off until next TTL
                 else:
