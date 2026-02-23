@@ -64,7 +64,6 @@ def verify_gateway_auth(
     signature_b64: str,
     pubkey_b64: str,
     allowed_cert_hashes: set[str],
-    expected_model_id: str | None = None,
     max_age_seconds: int = 30,
 ) -> dict:
     """
@@ -75,7 +74,6 @@ def verify_gateway_auth(
         signature_b64: base64-encoded signature
         pubkey_b64: base64-encoded DER SubjectPublicKeyInfo
         allowed_cert_hashes: set of hex SHA-256 hashes (from on-chain)
-        expected_model_id: if set, verify model_id in payload
         max_age_seconds: max allowed token age
 
     Returns the decoded payload dict on success.
@@ -127,13 +125,5 @@ def verify_gateway_auth(
         raise GatewayAuthError(
             f"Token expired: age={now - token_time:.0f}s exceeds max_age={max_age_seconds}s"
         )
-
-    # Check model_id
-    if expected_model_id is not None:
-        if payload.get("model_id") != expected_model_id:
-            raise GatewayAuthError(
-                f"model_id mismatch: got {payload.get('model_id')!r}, "
-                f"expected {expected_model_id!r}"
-            )
 
     return payload

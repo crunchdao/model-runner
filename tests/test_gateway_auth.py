@@ -3,17 +3,13 @@ Tests for gateway auth: generate signed messages the same way the
 model-runner-client does, then verify them on the server side.
 """
 import base64
-import hashlib
 import json
 import time
 
 import pytest
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-import datetime
 
 from model_runner.security.gateway_auth import (
     GatewayAuthError,
@@ -89,10 +85,8 @@ class TestVerifyGatewayAuth:
             signature_b64=sig_b64,
             pubkey_b64=pub_b64,
             allowed_cert_hashes=allowed,
-            expected_model_id="model-42",
         )
 
-        assert result["model_id"] == "model-42"
         assert "timestamp" in result
 
     def test_expired_token(self):
@@ -147,21 +141,6 @@ class TestVerifyGatewayAuth:
                 signature_b64=sig_b64,
                 pubkey_b64=pub_b64,
                 allowed_cert_hashes=allowed,
-            )
-
-    def test_model_id_mismatch_rejected(self):
-        """A valid token for a different model_id is rejected."""
-        key = _generate_rsa_key()
-        allowed = {_cert_hash(key)}
-        msg_b64, sig_b64, pub_b64 = _build_auth_metadata(key, "model-42")
-
-        with pytest.raises(GatewayAuthError, match="model_id mismatch"):
-            verify_gateway_auth(
-                message_b64=msg_b64,
-                signature_b64=sig_b64,
-                pubkey_b64=pub_b64,
-                allowed_cert_hashes=allowed,
-                expected_model_id="model-99",
             )
 
     def test_future_timestamp_rejected(self):
