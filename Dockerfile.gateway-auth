@@ -1,8 +1,0 @@
-FROM borisndocker/crunch-dynamic-model-runner:0.5.5-vanta
-
-# Install gateway auth dependencies and the model-runner wheel with --no-deps
-# to avoid the importlib conflict on Python 3.11
-COPY dist/crunch_model_runner-0.4.2-py3-none-any.whl /tmp/
-RUN pip install --no-cache-dir cryptography requests \
-    && pip install --no-cache-dir --no-deps --force-reinstall /tmp/crunch_model_runner-0.4.2-py3-none-any.whl \
-    && rm /tmp/crunch_model_runner-0.4.2-py3-none-any.whl

@@ -11,13 +11,12 @@ from model_runner.security.gateway_auth import GatewayAuthError
 from model_runner.security.gateway_auth_interceptor import GatewayAuthServerInterceptor
 
 
-def _write_cert_file(path, cert_hashes, wallet="0xTEST"):
+def _write_cert_file(path, cert_hashes):
     """Write a cert file matching the format produced by the host cert poller."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(
             {
-                "coordinator_wallet": wallet,
                 "cert_hashes": cert_hashes,
                 "updated_at": "2026-01-01T00:00:00Z",
             },
@@ -33,7 +32,6 @@ class TestCertFileLoading:
         _write_cert_file(cert_file, ["aabb1122", "ccdd3344"])
 
         interceptor = GatewayAuthServerInterceptor(
-            coordinator_wallet="0xTEST",
             cert_file=cert_file,
         )
         hashes = interceptor._get_cert_hashes()
@@ -44,7 +42,6 @@ class TestCertFileLoading:
 
         with pytest.raises(GatewayAuthError, match="not found"):
             GatewayAuthServerInterceptor(
-                coordinator_wallet="0xTEST",
                 cert_file=cert_file,
             )
 
@@ -54,7 +51,6 @@ class TestCertFileLoading:
 
         with pytest.raises(GatewayAuthError, match="No cert hashes"):
             GatewayAuthServerInterceptor(
-                coordinator_wallet="0xTEST",
                 cert_file=cert_file,
             )
 
@@ -63,7 +59,6 @@ class TestCertFileLoading:
         _write_cert_file(cert_file, ["aabb1122"])
 
         interceptor = GatewayAuthServerInterceptor(
-            coordinator_wallet="0xTEST",
             cert_file=cert_file,
         )
         assert interceptor._get_cert_hashes() == {"aabb1122"}
@@ -83,7 +78,6 @@ class TestCertFileLoading:
         _write_cert_file(cert_file, ["AABB1122", "CcDd3344"])
 
         interceptor = GatewayAuthServerInterceptor(
-            coordinator_wallet="0xTEST",
             cert_file=cert_file,
         )
         assert interceptor._get_cert_hashes() == {"aabb1122", "ccdd3344"}
@@ -93,7 +87,6 @@ class TestCertFileLoading:
         _write_cert_file(cert_file, ["aabb1122"])
 
         interceptor = GatewayAuthServerInterceptor(
-            coordinator_wallet="0xTEST",
             cert_file=cert_file,
         )
         assert interceptor._get_cert_hashes() == {"aabb1122"}

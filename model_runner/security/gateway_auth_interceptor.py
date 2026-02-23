@@ -10,11 +10,11 @@ that is bind-mounted from the host. The host's background cert poller
 keeps this file up-to-date, so certs rotate without container restarts.
 
 Usage in server.py:
-    interceptor = GatewayAuthServerInterceptor(coordinator_wallet="Z9NPR...")
+    interceptor = GatewayAuthServerInterceptor(cert_file="/etc/gateway-auth/certs.json")
     server = grpc.server(..., interceptors=[interceptor])
 
-Requires environment variables:
-    GATEWAY_AUTH_COORDINATOR_WALLET  — Solana wallet address
+Activated by setting:
+    GATEWAY_AUTH_CERT_FILE=/etc/gateway-auth/certs.json
 """
 from __future__ import annotations
 
@@ -34,9 +34,6 @@ from .gateway_auth import (
 )
 
 logger = logging.getLogger("model_runner.gateway_auth_interceptor")
-
-# Path to the cert file bind-mounted from the host (written by cert_poller)
-CERT_FILE = "/etc/gateway-auth/certs.json"
 
 # How long to cache the file contents in memory (seconds).
 # The file is tiny, but we avoid re-reading on every single gRPC call.
@@ -84,20 +81,17 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
       4. Checks timestamp freshness
 
     Args:
-        coordinator_wallet: Solana wallet address of the coordinator.
+        cert_file: Path to the cert hashes JSON file.
         max_age_seconds: Maximum allowed token age (default 30s).
-        cert_file: Path to the cert hashes JSON file (default /etc/gateway-auth/certs.json).
         skip_methods: Method names to skip auth for (e.g. health checks).
     """
 
     def __init__(
         self,
-        coordinator_wallet: str,
+        cert_file: str,
         max_age_seconds: int = 30,
-        cert_file: str = CERT_FILE,
         skip_methods: set[str] | None = None,
     ):
-        self.coordinator_wallet = coordinator_wallet
         self.max_age_seconds = max_age_seconds
         self.cert_file = cert_file
         self.skip_methods = skip_methods or {
@@ -113,10 +107,9 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
         self._cert_hashes = self._read_cert_file()
         self._cert_hashes_read_at = time.time()
         logger.info(
-            "Gateway auth: loaded %d cert hash(es) from %s for wallet %s",
+            "Gateway auth: loaded %d cert hash(es) from %s",
             len(self._cert_hashes),
             self.cert_file,
-            self.coordinator_wallet,
         )
 
     def _read_cert_file(self) -> set[str]:
@@ -135,7 +128,7 @@ class GatewayAuthServerInterceptor(grpc.ServerInterceptor):
         hashes = data.get("cert_hashes", [])
         if not hashes:
             raise GatewayAuthError(
-                f"No cert hashes in {self.cert_file} for wallet {self.coordinator_wallet}"
+                f"No cert hashes in {self.cert_file}"
             )
 
         return {h.lower() for h in hashes}
