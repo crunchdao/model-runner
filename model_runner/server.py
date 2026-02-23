@@ -1,4 +1,5 @@
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import click
@@ -35,10 +36,21 @@ def cli(
 
     logger.setLevel(logging.getLevelName(log_level.upper()))
 
+    interceptors = []
+
+    # Gateway auth: verify signed tokens against cert hashes from a
+    # host-mounted file (kept fresh by the host's cert poller).
+    gateway_auth_cert_file = os.getenv('GATEWAY_AUTH_CERT_FILE')
+    if gateway_auth_cert_file:
+        from .security.gateway_auth_interceptor import GatewayAuthServerInterceptor
+        logger.info('Gateway auth enabled: reading cert hashes from %s', gateway_auth_cert_file)
+        interceptors.append(GatewayAuthServerInterceptor(cert_file=gateway_auth_cert_file))
+
     # Use at least 2 workers to ensure Health checks are always responsive,
     # since the other service methods are restricted to one concurrent call
     server = grpc.server(
         ThreadPoolExecutor(max_workers=2),
+        interceptors=interceptors,
         options=[
             ('grpc.max_send_message_length', max_send_message_length),
             ('grpc.max_receive_message_length', max_receive_message_length)
