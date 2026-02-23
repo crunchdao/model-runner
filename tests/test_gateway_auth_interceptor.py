@@ -3,7 +3,6 @@ Tests for the gateway auth interceptor's file-based cert loading.
 """
 import json
 import os
-import time
 
 import pytest
 
